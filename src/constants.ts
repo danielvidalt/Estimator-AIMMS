@@ -1,4 +1,4 @@
-import { EstimateInputs } from './types';
+import { EstimateInputs, PricingConfig } from './types';
 
 // Floors factors
 export const FLOORS_FACTORS = [
@@ -277,3 +277,28 @@ export const INITIAL_HISTORY = [
     status: "Quoted" as const,
   }
 ];
+
+// Editable numeric parameters, derived from the tables above. This is the
+// factory-default pricing config: the fallback before Supabase settings load,
+// and the value used by "Reset to factory defaults" in the Settings tab.
+export const DEFAULT_PRICING_CONFIG: PricingConfig = {
+  floorsFactors: FLOORS_FACTORS.map(f => f.factor),
+  floorsMaxThresholds: FLOORS_FACTORS.slice(0, -1).map(f => f.max),
+  areaFactors: AREA_FACTORS.map(f => f.factor),
+  areaMaxThresholds: AREA_FACTORS.slice(0, -1).map(f => f.max),
+  complexityBaseFactors: COMPLEXITY_BASE.map(c => c.factor),
+  complexityAdjFactors: COMPLEXITY_ADJ.map(a => a.factor),
+  zoneFactors: ZONE_FACTORS.map(z => z.factor),
+  locationZones: LOCATION_ZONES.map(l => ({
+    zoneFactor: l.zoneFactor,
+    flight: l.flight,
+    accom: l.accom,
+    allowance: l.allowance,
+  })),
+  dronePilotRates: { ...DRONE_PILOT_RATES },
+  execRates: { ...EXEC_RATES },
+  prelimDetailsA: PRELIM_DETAILS_A.map(i => i.cost),
+  prelimDetailsB: PRELIM_DETAILS_B.map(i => i.cost),
+  categoryMaxFactors: CATEGORY_RULES.slice(0, -1).map(r => r.maxFactor),
+  categoryMultipliers: CATEGORY_RULES.map(r => r.multiplier),
+};

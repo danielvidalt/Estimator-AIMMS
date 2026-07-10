@@ -31,28 +31,32 @@ import {
   TrendingDown,
   RefreshCw,
   FolderOpen,
-  ChevronRight
+  ChevronRight,
+  Settings
 } from 'lucide-react';
 
-import { 
-  DEFAULT_INPUTS, 
-  INITIAL_HISTORY, 
-  COMPLEXITY_BASE, 
-  COMPLEXITY_ADJ, 
-  ZONE_FACTORS, 
-  LOCATION_ZONES, 
+import {
+  DEFAULT_INPUTS,
+  INITIAL_HISTORY,
+  COMPLEXITY_BASE,
+  COMPLEXITY_ADJ,
+  ZONE_FACTORS,
+  LOCATION_ZONES,
   PRELIMINARIES_COST,
-  DRONE_PILOT_RATES,
-  EXEC_RATES,
-  CATEGORY_RULES
+  CATEGORY_RULES,
+  DEFAULT_PRICING_CONFIG,
+  PRELIM_DETAILS_A,
+  PRELIM_DETAILS_B
 } from './constants';
-import { EstimateInputs, SavedQuote, Segment } from './types';
-import { calculateEstimate } from './utils/calculator';
+import { EstimateInputs, SavedQuote, Segment, PricingConfig } from './types';
+import { calculateEstimate, getPreliminariesCost, getPreliminariesBreakdown } from './utils/calculator';
 import PreliminariesModal from './components/PreliminariesModal';
 import PrintQuotePreview from './components/PrintQuotePreview';
+import SettingsPanel from './components/SettingsPanel';
 import { Logo } from './components/Logo';
 import { fetchQuotes, upsertQuote, upsertQuotes, deleteQuote } from './lib/quotesService';
 import { fetchAppState, saveAppState } from './lib/appStateService';
+import { fetchPricingConfig, savePricingConfig } from './lib/pricingConfigService';
 import { supabase } from './lib/supabaseClient';
 
 interface AppProps {
@@ -94,14 +98,16 @@ export default function App({ session }: AppProps) {
     }
   });
 
+  const [config, setConfig] = useState<PricingConfig>(DEFAULT_PRICING_CONFIG);
+
   // Sidebar expanded settings, alerts state, modals
   const [isPrelimModalOpen, setIsPrelimModalOpen] = useState(false);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'info' | 'error' } | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
-  
+
   // Quick navigation scroll steps or tabs
-  const [activeTab, setActiveTab] = useState<'calculator' | 'history'>('calculator');
+  const [activeTab, setActiveTab] = useState<'calculator' | 'history' | 'settings'>('calculator');
 
   // Whether the initial pull from Supabase has completed (gates outbound sync
   // so we don't push stale local-cache defaults over real remote data).
@@ -162,6 +168,18 @@ export default function App({ session }: AppProps) {
         }
       } catch (err) {
         if (!cancelled) reportSupabaseError(err);
+      }
+
+      try {
+        const remoteConfig = await fetchPricingConfig();
+        if (cancelled) return;
+        if (remoteConfig) {
+          setConfig(remoteConfig);
+        } else {
+          await savePricingConfig(DEFAULT_PRICING_CONFIG);
+        }
+      } catch (err) {
+        if (!cancelled) reportSupabaseError(err);
       } finally {
         if (!cancelled) setIsHydrated(true);
       }
@@ -193,12 +211,14 @@ export default function App({ session }: AppProps) {
   }, [notification]);
 
   // --- Calculations ---
+  const preliminariesDefault = useMemo(() => getPreliminariesCost(config), [config]);
+
   const results = useMemo(() => {
-    const baseCalculated = calculateEstimate(inputs);
-    
+    const baseCalculated = calculateEstimate(inputs, config);
+
     // Override preliminaries dynamically
-    if (customPrelims !== PRELIMINARIES_COST) {
-      const diff = customPrelims - PRELIMINARIES_COST;
+    if (customPrelims !== preliminariesDefault) {
+      const diff = customPrelims - preliminariesDefault;
       const totalCost = baseCalculated.totalCost + diff;
       
       const marginFraction = inputs.profitMarginPercent / 100;
@@ -233,7 +253,7 @@ export default function App({ session }: AppProps) {
     }
     
     return baseCalculated;
-  }, [inputs, customPrelims]);
+  }, [inputs, customPrelims, config, preliminariesDefault]);
 
   // --- Actions & Handlers ---
   const triggerNotification = (message: string, type: 'success' | 'info' | 'error' = 'success') => {
@@ -514,16 +534,33 @@ export default function App({ session }: AppProps) {
   const handleResetCalculator = () => {
     if (confirm("Reset the estimator? All current draft values will be restored to defaults.")) {
       setInputs(DEFAULT_INPUTS);
-      setCustomPrelims(PRELIMINARIES_COST);
+      setCustomPrelims(preliminariesDefault);
       setEditingId(null);
       triggerNotification("Calculator reset to vanilla template parameters.", "info");
     }
+  };
+
+  const handleSaveConfig = (next: PricingConfig) => {
+    setConfig(next);
+    savePricingConfig(next)
+      .then(() => triggerNotification("Pricing configuration saved.", "success"))
+      .catch(reportSupabaseError);
   };
 
   // Pre-calculations for display
   const baseComplexityDetails = COMPLEXITY_BASE.find(c => c.id === inputs.complexity.baseLevelId) || COMPLEXITY_BASE[0];
   const activeZoneObj = LOCATION_ZONES.find(l => l.id === inputs.complexity.locationId) || LOCATION_ZONES[0];
   const catRuleColor = CATEGORY_RULES.find(r => results.category === r.category) || CATEGORY_RULES[2];
+
+  const prelimBreakdown = getPreliminariesBreakdown(config);
+  const prelimDetailsAWithCosts = PRELIM_DETAILS_A.map((item, idx) => ({
+    label: item.label,
+    cost: config.prelimDetailsA[idx],
+  }));
+  const prelimDetailsBWithCosts = PRELIM_DETAILS_B.map((item, idx) => ({
+    label: item.label,
+    cost: config.prelimDetailsB[idx],
+  }));
 
   return (
     <div className="bg-slate-50 min-h-screen text-slate-800 font-sans antialiased relative selection:bg-emerald-100 selection:text-emerald-900 pb-16">
@@ -582,6 +619,17 @@ export default function App({ session }: AppProps) {
                   {history.length}
                 </span>
               )}
+            </button>
+            <button
+              onClick={() => setActiveTab('settings')}
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition duration-150 cursor-pointer ${
+                activeTab === 'settings'
+                  ? 'bg-aimms-blue text-white shadow-md shadow-aimms-blue/20'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-800'
+              }`}
+            >
+              <Settings className="w-4 h-4" />
+              <span>Configuración</span>
             </button>
           </div>
 
@@ -876,7 +924,7 @@ export default function App({ session }: AppProps) {
                     1. Base Complexity Level
                   </label>
                   <div className="grid grid-cols-1 gap-2">
-                    {COMPLEXITY_BASE.map((lvl) => {
+                    {COMPLEXITY_BASE.map((lvl, lvlIdx) => {
                       const isSelected = inputs.complexity.baseLevelId === lvl.id;
                       return (
                         <div
@@ -901,7 +949,7 @@ export default function App({ session }: AppProps) {
                           <span className="text-sm font-mono font-black shrink-0">
                             {lvl.id === 'level4' && inputs.complexity.customLevel4Factor
                               ? `${inputs.complexity.customLevel4Factor.toFixed(2)}x`
-                              : `${lvl.factor.toFixed(2)}x`
+                              : `${config.complexityBaseFactors[lvlIdx].toFixed(2)}x`
                             }
                           </span>
                         </div>
@@ -942,7 +990,7 @@ export default function App({ session }: AppProps) {
                     </span>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
-                    {COMPLEXITY_ADJ.map(adj => {
+                    {COMPLEXITY_ADJ.map((adj, adjIdx) => {
                       const isActive = inputs.complexity.adjustments.includes(adj.id);
                       return (
                         <button
@@ -958,7 +1006,7 @@ export default function App({ session }: AppProps) {
                           <span className={`font-mono text-[10px] font-black shrink-0 px-1.5 py-0.5 rounded ${
                             isActive ? 'bg-aimms-blue/10 text-aimms-blue' : 'bg-slate-100 text-slate-500'
                           }`}>
-                            +{adj.factor}
+                            +{config.complexityAdjFactors[adjIdx]}
                           </span>
                         </button>
                       );
@@ -983,9 +1031,9 @@ export default function App({ session }: AppProps) {
                         onChange={(e) => updateComplexity('droneRestrictionId', e.target.value)}
                         className="w-full pl-3.5 pr-8 py-2.5 border border-slate-200 bg-white rounded-xl text-slate-800 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500/20 cursor-pointer appearance-none"
                       >
-                        {ZONE_FACTORS.map(z => (
+                        {ZONE_FACTORS.map((z, zIdx) => (
                           <option key={z.id} value={z.id}>
-                            {z.label} ({z.factor}x)
+                            {z.label} ({config.zoneFactors[zIdx]}x)
                           </option>
                         ))}
                       </select>
@@ -1010,9 +1058,9 @@ export default function App({ session }: AppProps) {
                         onChange={(e) => updateComplexity('locationId', e.target.value)}
                         className="w-full pl-3.5 pr-8 py-2.5 border border-slate-200 bg-white rounded-xl text-slate-805 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500/20 cursor-pointer appearance-none"
                       >
-                        {LOCATION_ZONES.map(loc => (
+                        {LOCATION_ZONES.map((loc, locIdx) => (
                           <option key={loc.id} value={loc.id}>
-                            {loc.label} (Flights: ${loc.flight})
+                            {loc.label} (Flights: ${config.locationZones[locIdx].flight})
                           </option>
                         ))}
                       </select>
@@ -1679,7 +1727,7 @@ export default function App({ session }: AppProps) {
             </div>
 
           </div>
-        ) : (
+        ) : activeTab === 'history' ? (
           /* HISTORIAL TABLE VIEW */
           <div className="bg-white rounded-3xl border border-slate-200/80 shadow-md p-6 space-y-6">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-100 pb-4">
@@ -1843,6 +1891,8 @@ export default function App({ session }: AppProps) {
               </div>
             )}
           </div>
+        ) : (
+          <SettingsPanel config={config} onSave={handleSaveConfig} />
         )}
 
       </main>
@@ -1853,7 +1903,14 @@ export default function App({ session }: AppProps) {
         onClose={() => setIsPrelimModalOpen(false)}
         customPrelims={customPrelims}
         onOverride={(val) => setCustomPrelims(val)}
-        onReset={() => setCustomPrelims(PRELIMINARIES_COST)}
+        onReset={() => setCustomPrelims(preliminariesDefault)}
+        defaultPrelims={preliminariesDefault}
+        detailsA={prelimDetailsAWithCosts}
+        detailsB={prelimDetailsBWithCosts}
+        subtotalA={prelimBreakdown.subtotalA}
+        contingencyA={prelimBreakdown.contingencyA}
+        totalA={prelimBreakdown.totalA}
+        totalB={prelimBreakdown.totalB}
       />
 
       <PrintQuotePreview

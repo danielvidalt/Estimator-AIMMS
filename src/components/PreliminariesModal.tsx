@@ -1,14 +1,10 @@
 import React from 'react';
-import { 
-  PRELIM_DETAILS_A, 
-  PRELIM_DETAILS_B, 
-  PRELIM_SUBTOTAL_A, 
-  PRELIM_CONTINGENCY_A, 
-  PRELIM_TOTAL_A, 
-  PRELIM_TOTAL_B, 
-  PRELIMINARIES_COST 
-} from '../constants';
 import { X, HelpCircle, DollarSign, RefreshCw, Layers } from 'lucide-react';
+
+interface PrelimLineItem {
+  label: string;
+  cost: number;
+}
 
 interface PreliminariesModalProps {
   isOpen: boolean;
@@ -16,6 +12,13 @@ interface PreliminariesModalProps {
   customPrelims: number;
   onOverride: (value: number) => void;
   onReset: () => void;
+  defaultPrelims: number;
+  detailsA: PrelimLineItem[];
+  detailsB: PrelimLineItem[];
+  subtotalA: number;
+  contingencyA: number;
+  totalA: number;
+  totalB: number;
 }
 
 export default function PreliminariesModal({
@@ -23,11 +26,18 @@ export default function PreliminariesModal({
   onClose,
   customPrelims,
   onOverride,
-  onReset
+  onReset,
+  defaultPrelims,
+  detailsA,
+  detailsB,
+  subtotalA,
+  contingencyA,
+  totalA,
+  totalB
 }: PreliminariesModalProps) {
   if (!isOpen) return null;
 
-  const isOverridden = customPrelims !== PRELIMINARIES_COST;
+  const isOverridden = customPrelims !== defaultPrelims;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 backdrop-blur-xs p-4 overflow-y-auto">
@@ -62,7 +72,7 @@ export default function PreliminariesModal({
                   Preliminaries Total Cost
                 </label>
                 <p className="text-xs text-slate-500">
-                  Fixed system standard: <strong className="font-mono text-slate-700">${PRELIMINARIES_COST.toLocaleString('en-US', { minimumFractionDigits: 2 })}</strong>
+                  Fixed system standard: <strong className="font-mono text-slate-700">${defaultPrelims.toLocaleString('en-US', { minimumFractionDigits: 2 })}</strong>
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -103,11 +113,11 @@ export default function PreliminariesModal({
                   Section A — Direct Costs
                 </h4>
                 <span className="text-xs font-mono font-semibold text-slate-700 bg-slate-100 px-2 py-0.5 rounded">
-                  ${PRELIM_TOTAL_A.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                  ${totalA.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                 </span>
               </div>
               <div className="text-xs space-y-2 max-h-64 overflow-y-auto pr-1">
-                {PRELIM_DETAILS_A.map((item, idx) => (
+                {detailsA.map((item, idx) => (
                   <div key={idx} className="flex justify-between p-1.5 hover:bg-slate-50 rounded transition border-b border-dashed border-slate-100">
                     <span className="text-slate-600">{item.label}</span>
                     <span className="font-mono text-slate-800 font-medium">${item.cost.toFixed(2)}</span>
@@ -115,11 +125,11 @@ export default function PreliminariesModal({
                 ))}
                 <div className="pt-2 flex justify-between text-slate-500 font-medium">
                   <span>Subtotal Section A:</span>
-                  <span>${PRELIM_SUBTOTAL_A.toFixed(2)}</span>
+                  <span>${subtotalA.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-slate-500 font-medium">
                   <span>Contingency amount (10%):</span>
-                  <span>${PRELIM_CONTINGENCY_A.toFixed(2)}</span>
+                  <span>${contingencyA.toFixed(2)}</span>
                 </div>
               </div>
             </div>
@@ -132,11 +142,11 @@ export default function PreliminariesModal({
                   Section B — Indirect Costs (Prorated)
                 </h4>
                 <span className="text-xs font-mono font-semibold text-slate-700 bg-slate-100 px-2 py-0.5 rounded">
-                  ${PRELIM_TOTAL_B.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                  ${totalB.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                 </span>
               </div>
               <div className="text-xs space-y-2 max-h-64 overflow-y-auto pr-1">
-                {PRELIM_DETAILS_B.map((item, idx) => (
+                {detailsB.map((item, idx) => (
                   <div key={idx} className="flex justify-between p-1.5 hover:bg-slate-50 rounded transition border-b border-dashed border-slate-100">
                     <span className="text-slate-600">{item.label}</span>
                     <span className="font-mono text-slate-800 font-medium">${item.cost.toFixed(2)}</span>

@@ -1,18 +1,34 @@
-import { 
-  FLOORS_FACTORS, 
-  AREA_FACTORS, 
-  COMPLEXITY_BASE, 
-  COMPLEXITY_ADJ, 
-  ZONE_FACTORS, 
-  LOCATION_ZONES, 
-  DRONE_PILOT_RATES, 
-  EXEC_RATES, 
-  PRELIMINARIES_COST,
+import {
+  COMPLEXITY_BASE,
+  COMPLEXITY_ADJ,
+  ZONE_FACTORS,
+  LOCATION_ZONES,
+  DRONE_PILOT_RATES,
   CATEGORY_RULES
 } from '../constants';
-import { EstimateInputs, EstimateResults } from '../types';
+import { EstimateInputs, EstimateResults, PricingConfig } from '../types';
 
-export function calculateEstimate(inputs: EstimateInputs): EstimateResults {
+export interface PreliminariesBreakdown {
+  subtotalA: number;
+  contingencyA: number;
+  totalA: number;
+  totalB: number;
+  total: number;
+}
+
+export function getPreliminariesBreakdown(config: PricingConfig): PreliminariesBreakdown {
+  const subtotalA = config.prelimDetailsA.reduce((acc, cost) => acc + cost, 0);
+  const contingencyA = subtotalA * 0.10;
+  const totalA = subtotalA + contingencyA;
+  const totalB = config.prelimDetailsB.reduce((acc, cost) => acc + cost, 0);
+  return { subtotalA, contingencyA, totalA, totalB, total: totalA + totalB };
+}
+
+export function getPreliminariesCost(config: PricingConfig): number {
+  return getPreliminariesBreakdown(config).total;
+}
+
+export function calculateEstimate(inputs: EstimateInputs, config: PricingConfig): EstimateResults {
   const {
     projectInfo,
     geometry,
@@ -36,50 +52,59 @@ export function calculateEstimate(inputs: EstimateInputs): EstimateResults {
 
   // 2. Lookup Factors
   // Floors factor
-  const floorsFactorObj = FLOORS_FACTORS.find(f => geometry.numFloors <= f.max) || FLOORS_FACTORS[FLOORS_FACTORS.length - 1];
-  const floorsFactor = floorsFactorObj.factor;
+  const floorsIdx = config.floorsMaxThresholds.findIndex(max => geometry.numFloors <= max);
+  const floorsFactor = floorsIdx === -1
+    ? config.floorsFactors[config.floorsFactors.length - 1]
+    : config.floorsFactors[floorsIdx];
 
   // Area factor
-  const areaFactorObj = AREA_FACTORS.find(f => totalFacadeArea <= f.max) || AREA_FACTORS[AREA_FACTORS.length - 1];
-  const areaFactor = areaFactorObj.factor;
+  const areaIdx = config.areaMaxThresholds.findIndex(max => totalFacadeArea <= max);
+  const areaFactor = areaIdx === -1
+    ? config.areaFactors[config.areaFactors.length - 1]
+    : config.areaFactors[areaIdx];
 
   // Complexity base factor
-  const baseObj = COMPLEXITY_BASE.find(c => c.id === complexity.baseLevelId) || COMPLEXITY_BASE[0];
-  let complexityBaseFactor = baseObj.factor;
+  const baseIdx = COMPLEXITY_BASE.findIndex(c => c.id === complexity.baseLevelId);
+  const baseObj = baseIdx >= 0 ? COMPLEXITY_BASE[baseIdx] : COMPLEXITY_BASE[0];
+  let complexityBaseFactor = baseIdx >= 0 ? config.complexityBaseFactors[baseIdx] : config.complexityBaseFactors[0];
   if (baseObj.level === 4 && complexity.customLevel4Factor !== undefined) {
     complexityBaseFactor = complexity.customLevel4Factor;
   }
 
   // Complexity adjustments total
   const complexityAdjustmentsTotal = complexity.adjustments.reduce((acc, adjId) => {
-    const adjObj = COMPLEXITY_ADJ.find(a => a.id === adjId);
-    return acc + (adjObj ? adjObj.factor : 0);
+    const idx = COMPLEXITY_ADJ.findIndex(a => a.id === adjId);
+    return acc + (idx >= 0 ? config.complexityAdjFactors[idx] : 0);
   }, 0);
 
   // Total factor = Complexity Base Factor + Adjustments
   const totalFactor = Number((complexityBaseFactor + complexityAdjustmentsTotal).toFixed(2));
 
   // Drone restriction factor
-  const droneObj = ZONE_FACTORS.find(z => z.id === complexity.droneRestrictionId) || ZONE_FACTORS[0];
-  const droneRestrictionFactor = droneObj.factor;
+  const droneIdx = ZONE_FACTORS.findIndex(z => z.id === complexity.droneRestrictionId);
+  const droneRestrictionFactor = droneIdx >= 0 ? config.zoneFactors[droneIdx] : config.zoneFactors[0];
 
   // Location / travel zone factor
-  const locObj = LOCATION_ZONES.find(l => l.id === complexity.locationId) || LOCATION_ZONES[0];
-  const locationFactor = locObj.zoneFactor;
+  const locIdx = LOCATION_ZONES.findIndex(l => l.id === complexity.locationId);
+  const locationZoneCfg = locIdx >= 0 ? config.locationZones[locIdx] : config.locationZones[0];
+  const locationFactor = locationZoneCfg.zoneFactor;
 
   // Category and multiplier (determined by Total Factor)
-  const catRule = CATEGORY_RULES.find(r => totalFactor <= r.maxFactor) || CATEGORY_RULES[CATEGORY_RULES.length - 1];
+  const catIdx = config.categoryMaxFactors.findIndex(max => totalFactor <= max);
+  const catRule = catIdx === -1 ? CATEGORY_RULES[CATEGORY_RULES.length - 1] : CATEGORY_RULES[catIdx];
+  const categoryMultiplier = catIdx === -1
+    ? config.categoryMultipliers[config.categoryMultipliers.length - 1]
+    : config.categoryMultipliers[catIdx];
   const category = catRule.category;
-  const categoryMultiplier = catRule.multiplier;
 
   // 3. Execution Costs (Variable Direct Costs)
-  const dailyTeamCost = EXEC_RATES.teamLeader + (Math.max(1, execution.teamSize) - 1) * EXEC_RATES.teamWorker;
+  const dailyTeamCost = config.execRates.teamLeader + (Math.max(1, execution.teamSize) - 1) * config.execRates.teamWorker;
   const inspectionCost = execution.inspectionDays * dailyTeamCost;
   const nfcCost = execution.nfcDays * dailyTeamCost;
-  const tagging3dCost = execution.tagging3dDays * EXEC_RATES.tagging3dHrsDay * EXEC_RATES.tagging3dHr;
-  const reportCost = execution.reportDays * EXEC_RATES.reportHrsDay * EXEC_RATES.reportHrRate;
-  
-  const pilotCostBase = DRONE_PILOT_RATES[execution.dronePilotType] || 300;
+  const tagging3dCost = execution.tagging3dDays * config.execRates.tagging3dHrsDay * config.execRates.tagging3dHr;
+  const reportCost = execution.reportDays * config.execRates.reportHrsDay * config.execRates.reportHrRate;
+
+  const pilotCostBase = config.dronePilotRates[execution.dronePilotType] ?? DRONE_PILOT_RATES[execution.dronePilotType] ?? 300;
   // Apply location and drone restriction factors to drone pilot costs as complexity escalates
   const dronePilotCost = pilotCostBase * droneRestrictionFactor;
 
@@ -96,20 +121,20 @@ export function calculateEstimate(inputs: EstimateInputs): EstimateResults {
 
   // 4. Travel & Mobilisation Costs
   // Based on the selected locationId zone
-  const travelZone = LOCATION_ZONES.find(l => l.id === complexity.locationId) || LOCATION_ZONES[0];
-  
+  const travelZone = locationZoneCfg;
+
   // Flights (round trip per person travelling)
   const numTravelers = travel.travellingMembers >= 0 ? travel.travellingMembers : execution.teamSize;
   const flightCost = travelZone.flight * numTravelers;
-  
-  // Accommodation (rate * nights * travelers) - wait, if lodging is Airbnb, often it's per house, 
+
+  // Accommodation (rate * nights * travelers) - wait, if lodging is Airbnb, often it's per house,
   // but let's stick to the spec's: Accom Rate * Nights * Team Size or simply per night.
   // The spec says: Accommodation = Accom Rate * Nights * Team Size
   const accommodationCost = travelZone.accom * travel.accommodationNights * (numTravelers || 1);
-  
+
   // Daily allowance (daily rate * travel days * travelers)
   const dailyAllowanceCost = travelZone.allowance * travel.travelDays * numTravelers;
-  
+
   let totalTravelCost = flightCost + accommodationCost + dailyAllowanceCost + travel.equipmentTransportCost;
 
   // If contractor execution type and there is a contractor labor override, add it
@@ -125,11 +150,12 @@ export function calculateEstimate(inputs: EstimateInputs): EstimateResults {
   let estimatorDailyAllowanceCost = 0;
 
   if (meeting.required) {
-    const meetingZone = LOCATION_ZONES.find(l => l.id === meeting.travelScenarioId) || LOCATION_ZONES[0];
-    
+    const meetingIdx = LOCATION_ZONES.findIndex(l => l.id === meeting.travelScenarioId);
+    const meetingZone = meetingIdx >= 0 ? config.locationZones[meetingIdx] : config.locationZones[0];
+
     // Flight for 1 estimator
     estimatorFlightCost = meetingZone.flight;
-    
+
     // Accommodation for 1 estimator based on option
     if (meeting.accommodationType === 'separate') {
       // Rates based on meeting zone
@@ -141,21 +167,21 @@ export function calculateEstimate(inputs: EstimateInputs): EstimateResults {
     } else {
       estimatorAccommodationCost = 0;
     }
-    
+
     // Daily allowance
     estimatorDailyAllowanceCost = meetingZone.allowance * meeting.dailyAllowanceDays;
   }
 
   const totalEstimatorCost = estimatorFlightCost + estimatorAccommodationCost + estimatorDailyAllowanceCost;
 
-  // 6. Preliminaries Cost
-  const preliminariesCost = PRELIMINARIES_COST;
+  // 6. Preliminaries Cost (derived live from the itemized line items)
+  const preliminariesCost = getPreliminariesCost(config);
 
   // 7. Overall Sums
   const totalCost = preliminariesCost + totalExecutionCost + totalTravelCost + totalEstimatorCost;
-  
+
   const profitMarginPercentFraction = profitMarginPercent / 100;
-  
+
   let profitAmount = 0;
   if (inputs.marginMethod === 'gross') {
     // Gross Return (Margin on Sales price)
@@ -170,7 +196,7 @@ export function calculateEstimate(inputs: EstimateInputs): EstimateResults {
     // Default: Markup on Cost
     profitAmount = totalCost * profitMarginPercentFraction;
   }
-  
+
   const subtotal = totalCost + profitAmount;
   const gstAmount = subtotal * 0.10; // 10%
   const finalPrice = subtotal + gstAmount;
@@ -178,9 +204,9 @@ export function calculateEstimate(inputs: EstimateInputs): EstimateResults {
   // 8. Rates per m2
   // Adjust Cost = Execution Cost (the variable cost of executing, without prelims or travel)
   const adjustCost = totalExecutionCost;
-  
+
   const costPerM2 = totalFacadeArea > 0 ? (adjustCost / totalFacadeArea) : 0;
-  
+
   let sellPricePerM2 = 0;
   if (totalFacadeArea > 0) {
     if (inputs.marginMethod === 'gross') {
@@ -193,7 +219,7 @@ export function calculateEstimate(inputs: EstimateInputs): EstimateResults {
       sellPricePerM2 = (adjustCost + (adjustCost * profitMarginPercentFraction)) / totalFacadeArea;
     }
   }
-  
+
   const finalRatePerM2 = totalFacadeArea > 0 ? (finalPrice / totalFacadeArea) : 0;
 
   return {
