@@ -1,4 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
+import type { Session } from '@supabase/supabase-js';
+import { LogOut } from 'lucide-react';
 import { 
   Calculator, 
   MapPin, 
@@ -51,8 +53,13 @@ import PrintQuotePreview from './components/PrintQuotePreview';
 import { Logo } from './components/Logo';
 import { fetchQuotes, upsertQuote, upsertQuotes, deleteQuote } from './lib/quotesService';
 import { fetchAppState, saveAppState } from './lib/appStateService';
+import { supabase } from './lib/supabaseClient';
 
-export default function App() {
+interface AppProps {
+  session: Session;
+}
+
+export default function App({ session }: AppProps) {
   // --- States ---
   const [inputs, setInputs] = useState<EstimateInputs>(() => {
     // Attempt load latest working draft or default
@@ -576,6 +583,18 @@ export default function App() {
                   {history.length}
                 </span>
               )}
+            </button>
+          </div>
+
+          {/* Signed-in user + sign out */}
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-slate-400 truncate max-w-[160px]">{session.user.email}</span>
+            <button
+              onClick={() => supabase.auth.signOut()}
+              title="Cerrar sesión"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-800 transition cursor-pointer"
+            >
+              <LogOut className="w-4 h-4" />
             </button>
           </div>
         </div>

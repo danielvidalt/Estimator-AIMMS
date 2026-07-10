@@ -37,18 +37,22 @@ create table if not exists public.app_state (
 alter table public.quotes enable row level security;
 alter table public.app_state enable row level security;
 
--- No auth/login exists in this app yet, so the anon key needs full read/write
--- access to function. Anyone with the public anon key (visible in the deployed
--- app's JS bundle) can read/write these tables. Tighten these policies (e.g.
--- scope by auth.uid()) once user accounts are introduced.
+-- Team tool, shared data: any signed-in user (regardless of who) can read
+-- and write every quote and the shared draft. There is no per-user scoping
+-- by design (the 3 team members share one history log). Anonymous
+-- (unauthenticated) requests are rejected.
 drop policy if exists "Allow anon full access to quotes" on public.quotes;
-create policy "Allow anon full access to quotes"
+drop policy if exists "Authenticated users can access quotes" on public.quotes;
+create policy "Authenticated users can access quotes"
   on public.quotes for all
+  to authenticated
   using (true)
   with check (true);
 
 drop policy if exists "Allow anon full access to app_state" on public.app_state;
-create policy "Allow anon full access to app_state"
+drop policy if exists "Authenticated users can access app_state" on public.app_state;
+create policy "Authenticated users can access app_state"
   on public.app_state for all
+  to authenticated
   using (true)
   with check (true);
