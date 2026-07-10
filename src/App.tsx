@@ -551,7 +551,6 @@ export default function App({ session }: AppProps) {
               <h1 className="text-base sm:text-lg font-extrabold tracking-wide text-white uppercase flex items-center gap-1.5 leading-none">
                 Project Estimator
               </h1>
-              <p className="text-xs sm:text-sm text-slate-350 mt-1.5">Precision Cost Modeling & Façade Inspection Pricing Engine</p>
             </div>
           </div>
 
