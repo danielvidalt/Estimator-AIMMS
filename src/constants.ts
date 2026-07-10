@@ -123,7 +123,7 @@ export const DEFAULT_INPUTS: EstimateInputs = {
       { id: "seg-1", perimeter: 40, height: 30, area: 1200 },
       { id: "seg-2", perimeter: 40, height: 30, area: 1200 },
     ],
-    directFacadeArea: 3600,
+    directFacadeArea: 0,
   },
   complexity: {
     baseLevelId: "level1",
