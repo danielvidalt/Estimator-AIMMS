@@ -85,6 +85,9 @@ export function calculateEstimate(inputs: EstimateInputs): EstimateResults {
 
   let totalExecutionCost = inspectionCost + nfcCost + tagging3dCost + reportCost + dronePilotCost;
 
+  // Apply floors and facade area factors: taller/larger buildings cost more to execute
+  totalExecutionCost = totalExecutionCost * floorsFactor * areaFactor;
+
   // Apply location factor multiplier to execution labor when we are remote/regional
   totalExecutionCost = totalExecutionCost * locationFactor;
 
