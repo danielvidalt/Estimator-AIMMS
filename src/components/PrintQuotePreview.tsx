@@ -276,6 +276,17 @@ export default function PrintQuotePreview({
                     </tr>
                     <tr className="border-b border-slate-200">
                       <td className="p-2.5 pl-3 font-semibold text-slate-800">
+                        NFC Tags — Materials & Installation
+                      </td>
+                      <td className="p-2.5 text-right text-slate-500">
+                        {inputs.execution.nfcFacadeCount} Facade{inputs.execution.nfcFacadeCount === 1 ? '' : 's'}
+                      </td>
+                      <td className="p-2.5 text-right font-mono text-slate-900 font-medium pr-3">
+                        ${results.totalNfcTagsCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </td>
+                    </tr>
+                    <tr className="border-b border-slate-200">
+                      <td className="p-2.5 pl-3 font-semibold text-slate-800">
                         Mobilisation & Field Team Travel
                       </td>
                       <td className="p-2.5 text-right text-slate-500">

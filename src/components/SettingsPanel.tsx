@@ -125,6 +125,10 @@ export default function SettingsPanel({ config, onSave }: SettingsPanelProps) {
     setBuffer(prev => ({ ...prev, execRates: { ...prev.execRates, [field]: value } }));
   };
 
+  const setNfcRate = (field: keyof PricingConfig['nfcRates'], value: number) => {
+    setBuffer(prev => ({ ...prev, nfcRates: { ...prev.nfcRates, [field]: value } }));
+  };
+
   const breakdown = getPreliminariesBreakdown(buffer);
 
   return (
@@ -286,7 +290,19 @@ export default function SettingsPanel({ config, onSave }: SettingsPanelProps) {
         </ParamRow>
       </Section>
 
-      <Section title="Category Rules" index="09">
+      <Section title="NFC Tags" index="09">
+        <ParamRow label="Tags per Facade">
+          <NumField step={1} value={buffer.nfcRates.tagsPerFacade} onChange={(v) => setNfcRate('tagsPerFacade', v)} />
+        </ParamRow>
+        <ParamRow label="Tag Price" sublabel="$/tag, materials">
+          <NumField prefix="$" value={buffer.nfcRates.tagPrice} onChange={(v) => setNfcRate('tagPrice', v)} />
+        </ParamRow>
+        <ParamRow label="Install Price" sublabel="$/tag, installation">
+          <NumField prefix="$" value={buffer.nfcRates.installPricePerTag} onChange={(v) => setNfcRate('installPricePerTag', v)} />
+        </ParamRow>
+      </Section>
+
+      <Section title="Category Rules" index="10">
         {CATEGORY_RULES.map((row, idx) => (
           <ParamRow key={row.category} label={row.label}>
             {idx < buffer.categoryMaxFactors.length ? (
@@ -307,7 +323,7 @@ export default function SettingsPanel({ config, onSave }: SettingsPanelProps) {
         ))}
       </Section>
 
-      <Section title="Preliminaries — Section A (Direct Costs)" index="10">
+      <Section title="Preliminaries — Section A (Direct Costs)" index="11">
         {PRELIM_DETAILS_A.map((item, idx) => (
           <ParamRow key={item.label} label={item.label}>
             <NumField prefix="$" value={buffer.prelimDetailsA[idx]} onChange={(v) => setArrayValue('prelimDetailsA', idx, v)} />
@@ -329,7 +345,7 @@ export default function SettingsPanel({ config, onSave }: SettingsPanelProps) {
         </div>
       </Section>
 
-      <Section title="Preliminaries — Section B (Indirect Costs)" index="11">
+      <Section title="Preliminaries — Section B (Indirect Costs)" index="12">
         {PRELIM_DETAILS_B.map((item, idx) => (
           <ParamRow key={item.label} label={item.label}>
             <NumField prefix="$" value={buffer.prelimDetailsB[idx]} onChange={(v) => setArrayValue('prelimDetailsB', idx, v)} />

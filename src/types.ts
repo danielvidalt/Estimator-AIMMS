@@ -32,6 +32,7 @@ export interface ExecutionData {
   inspectionDays: number;
   teamSize: number;
   nfcDays: number;
+  nfcFacadeCount: number; // number of facades getting NFC tags
   tagging3dDays: number;
   reportDays: number;
   dronePilotType: 'internal' | 'external';
@@ -87,6 +88,11 @@ export interface EstimateResults {
   reportCost: number;
   dronePilotCost: number;
   totalExecutionCost: number;
+
+  // NFC tag materials + per-tag installation (driven by nfcFacadeCount, not preliminaries)
+  nfcTagsMaterialCost: number;
+  nfcTagsInstallCost: number;
+  totalNfcTagsCost: number;
 
   // Travel costs
   flightCost: number;
@@ -173,4 +179,9 @@ export interface PricingConfig {
   prelimDetailsB: number[]; // cost per line item, aligned with PRELIM_DETAILS_B
   categoryMaxFactors: number[]; // 2 thresholds (C, B; "A" has no cap)
   categoryMultipliers: number[]; // 3 rows, aligned with CATEGORY_RULES
+  nfcRates: {
+    tagsPerFacade: number;
+    tagPrice: number; // $ per tag (materials)
+    installPricePerTag: number; // $ per tag (installation)
+  };
 }

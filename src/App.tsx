@@ -42,7 +42,6 @@ import {
   COMPLEXITY_ADJ,
   ZONE_FACTORS,
   LOCATION_ZONES,
-  PRELIMINARIES_COST,
   CATEGORY_RULES,
   DEFAULT_PRICING_CONFIG,
   PRELIM_DETAILS_A,
@@ -78,9 +77,9 @@ export default function App({ session }: AppProps) {
   const [customPrelims, setCustomPrelims] = useState<number>(() => {
     try {
       const cachedPrelims = localStorage.getItem('aimms_custom_prelims');
-      return cachedPrelims ? parseFloat(cachedPrelims) : PRELIMINARIES_COST;
+      return cachedPrelims ? parseFloat(cachedPrelims) : getPreliminariesCost(DEFAULT_PRICING_CONFIG);
     } catch {
-      return PRELIMINARIES_COST;
+      return getPreliminariesCost(DEFAULT_PRICING_CONFIG);
     }
   });
 
@@ -1085,7 +1084,7 @@ export default function App({ session }: AppProps) {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3.5">
+                <div className="grid grid-cols-2 sm:grid-cols-6 gap-3.5">
                   <div className="space-y-1.5 bg-slate-50/50 p-2.5 rounded-xl border border-slate-100 hover:border-slate-200 transition">
                     <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
                       Inspection Days
@@ -1127,6 +1126,19 @@ export default function App({ session }: AppProps) {
 
                   <div className="space-y-1.5 bg-slate-50/50 p-2.5 rounded-xl border border-slate-100 hover:border-slate-200 transition">
                     <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
+                      NFC Facades
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={inputs.execution.nfcFacadeCount}
+                      onChange={(e) => updateExecution('nfcFacadeCount', e.target.value)}
+                      className="w-full bg-white px-2 py-2 border border-slate-200 rounded-lg text-slate-800 text-sm md:text-base text-center font-bold font-mono focus:outline-none focus:ring-2 focus:ring-aimms-blue/20"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5 bg-slate-50/50 p-2.5 rounded-xl border border-slate-100 hover:border-slate-200 transition">
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
                       3D model (days)
                     </label>
                     <input
@@ -1138,7 +1150,7 @@ export default function App({ session }: AppProps) {
                     />
                   </div>
 
-                  <div className="space-y-1.5 bg-slate-50/50 p-2.5 rounded-xl border border-slate-100 hover:border-slate-200 transition col-span-2 sm:col-span-1">
+                  <div className="space-y-1.5 bg-slate-50/50 p-2.5 rounded-xl border border-slate-100 hover:border-slate-200 transition">
                     <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">
                       Report Days
                     </label>
@@ -1188,7 +1200,7 @@ export default function App({ session }: AppProps) {
                     <Briefcase className="w-4 h-4 text-sky-400" />
                     Labour Cost breakdown estimates
                   </h4>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-xs">
                     <div>
                       <span className="text-slate-400 font-bold block text-xs uppercase mb-1">Inspection:</span>
                       <strong className="text-white font-mono text-sm sm:text-base font-bold">${results.inspectionCost.toLocaleString()}</strong>
@@ -1196,6 +1208,10 @@ export default function App({ session }: AppProps) {
                     <div>
                       <span className="text-slate-400 font-bold block text-xs uppercase mb-1">NFC Tagging:</span>
                       <strong className="text-white font-mono text-sm sm:text-base font-bold">${results.nfcCost.toLocaleString()}</strong>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 font-bold block text-xs uppercase mb-1">NFC Tags (materials):</span>
+                      <strong className="text-white font-mono text-sm sm:text-base font-bold">${results.totalNfcTagsCost.toLocaleString()}</strong>
                     </div>
                     <div>
                       <span className="text-slate-400 font-bold block text-xs uppercase font-mono mb-1">3D marking:</span>
@@ -1513,6 +1529,11 @@ export default function App({ session }: AppProps) {
                   <div className="flex justify-between text-sm font-medium">
                     <span className="text-slate-650">Inspection & Analysis:</span>
                     <span className="font-mono text-slate-800 font-bold">${results.totalExecutionCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  </div>
+
+                  <div className="flex justify-between text-sm font-medium">
+                    <span className="text-slate-650">NFC Tags ({inputs.execution.nfcFacadeCount} facade{inputs.execution.nfcFacadeCount === 1 ? '' : 's'}):</span>
+                    <span className="font-mono text-slate-800 font-bold">${results.totalNfcTagsCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                   </div>
 
                   <div className="flex justify-between text-sm font-medium">

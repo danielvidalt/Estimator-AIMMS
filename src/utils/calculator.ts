@@ -119,6 +119,14 @@ export function calculateEstimate(inputs: EstimateInputs, config: PricingConfig)
   // Apply category multiplier as well to the entire execution cost
   totalExecutionCost = totalExecutionCost * categoryMultiplier;
 
+  // 3b. NFC Tags (materials + per-tag installation). Driven by how many
+  // facades get tagged, not by the fixed preliminaries -- flat quantity x
+  // unit price, no factor multipliers applied.
+  const nfcTagCount = Math.max(0, execution.nfcFacadeCount) * config.nfcRates.tagsPerFacade;
+  const nfcTagsMaterialCost = nfcTagCount * config.nfcRates.tagPrice;
+  const nfcTagsInstallCost = nfcTagCount * config.nfcRates.installPricePerTag;
+  const totalNfcTagsCost = nfcTagsMaterialCost + nfcTagsInstallCost;
+
   // 4. Travel & Mobilisation Costs
   // Based on the selected locationId zone
   const travelZone = locationZoneCfg;
@@ -178,7 +186,7 @@ export function calculateEstimate(inputs: EstimateInputs, config: PricingConfig)
   const preliminariesCost = getPreliminariesCost(config);
 
   // 7. Overall Sums
-  const totalCost = preliminariesCost + totalExecutionCost + totalTravelCost + totalEstimatorCost;
+  const totalCost = preliminariesCost + totalExecutionCost + totalTravelCost + totalEstimatorCost + totalNfcTagsCost;
 
   const profitMarginPercentFraction = profitMarginPercent / 100;
 
@@ -240,6 +248,9 @@ export function calculateEstimate(inputs: EstimateInputs, config: PricingConfig)
     reportCost,
     dronePilotCost,
     totalExecutionCost,
+    nfcTagsMaterialCost,
+    nfcTagsInstallCost,
+    totalNfcTagsCost,
     flightCost,
     accommodationCost,
     dailyAllowanceCost,

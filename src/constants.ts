@@ -73,8 +73,6 @@ export const PRELIM_DETAILS_A = [
   { label: "FCRS + anchor on-site planning", cost: 1040.00 },
   { label: "App design (Glide)", cost: 520.00 },
   { label: "Design Linktree pages", cost: 1200.00 },
-  { label: "NFC tags (400 units x $0.50)", cost: 200.00 },
-  { label: "Installation pack NFC (400 x $0.10)", cost: 40.00 },
   { label: "Spread Sheet - Report", cost: 500.00 },
   { label: "Deliverables (prints, binding)", cost: 50.00 },
 ];
@@ -93,12 +91,6 @@ export const PRELIM_DETAILS_B = [
   { label: "Internet", cost: 8.75 },
   { label: "Office Rent", cost: 100.00 },
 ];
-
-export const PRELIM_SUBTOTAL_A = 3675.00;
-export const PRELIM_CONTINGENCY_A = 367.50; // 10%
-export const PRELIM_TOTAL_A = 4042.50;
-export const PRELIM_TOTAL_B = 1625.50;
-export const PRELIMINARIES_COST = 5668.00; // Total Section A ($4042.50) + Section B ($1625.50)
 
 // Category rules based on total complexity factor
 export const CATEGORY_RULES = [
@@ -136,6 +128,7 @@ export const DEFAULT_INPUTS: EstimateInputs = {
     inspectionDays: 5,
     teamSize: 2,
     nfcDays: 2,
+    nfcFacadeCount: 1,
     tagging3dDays: 2,
     reportDays: 3,
     dronePilotType: "internal",
@@ -187,6 +180,7 @@ export const INITIAL_HISTORY = [
       inspectionDays: 6,
       teamSize: 2,
       nfcDays: 1,
+      nfcFacadeCount: 1,
       tagging3dDays: 2,
       reportDays: 3,
       dronePilotType: "internal" as const,
@@ -247,6 +241,7 @@ export const INITIAL_HISTORY = [
       inspectionDays: 8,
       teamSize: 3,
       nfcDays: 3,
+      nfcFacadeCount: 2,
       tagging3dDays: 4,
       reportDays: 5,
       dronePilotType: "external" as const,
@@ -301,4 +296,9 @@ export const DEFAULT_PRICING_CONFIG: PricingConfig = {
   prelimDetailsB: PRELIM_DETAILS_B.map(i => i.cost),
   categoryMaxFactors: CATEGORY_RULES.slice(0, -1).map(r => r.maxFactor),
   categoryMultipliers: CATEGORY_RULES.map(r => r.multiplier),
+  nfcRates: {
+    tagsPerFacade: 70,
+    tagPrice: 1.30,
+    installPricePerTag: 0.40,
+  },
 };
