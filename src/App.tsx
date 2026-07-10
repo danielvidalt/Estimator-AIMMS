@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { 
   Calculator, 
   MapPin, 
@@ -49,6 +49,8 @@ import { calculateEstimate } from './utils/calculator';
 import PreliminariesModal from './components/PreliminariesModal';
 import PrintQuotePreview from './components/PrintQuotePreview';
 import { Logo } from './components/Logo';
+import { fetchQuotes, upsertQuote, upsertQuotes, deleteQuote } from './lib/quotesService';
+import { fetchAppState, saveAppState } from './lib/appStateService';
 
 export default function App() {
   // --- States ---
@@ -94,7 +96,23 @@ export default function App() {
   // Quick navigation scroll steps or tabs
   const [activeTab, setActiveTab] = useState<'calculator' | 'history'>('calculator');
 
-  // --- Sync Cache ---
+  // Whether the initial pull from Supabase has completed (gates outbound sync
+  // so we don't push stale local-cache defaults over real remote data).
+  const [isHydrated, setIsHydrated] = useState(false);
+  const supabaseErrorShownRef = useRef(false);
+
+  const reportSupabaseError = (err: unknown) => {
+    console.error('Supabase sync error:', err);
+    if (!supabaseErrorShownRef.current) {
+      supabaseErrorShownRef.current = true;
+      triggerNotification(
+        'No se pudo sincronizar con Supabase (verifica que ejecutaste la migración SQL). Los cambios se guardan solo en este navegador.',
+        'error'
+      );
+    }
+  };
+
+  // --- Sync Cache (localStorage: instant paint + offline fallback) ---
   useEffect(() => {
     localStorage.setItem('aimms_current_draft', JSON.stringify(inputs));
   }, [inputs]);
@@ -106,6 +124,58 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('aimms_project_history', JSON.stringify(history));
   }, [history]);
+
+  // --- Hydrate from Supabase (source of truth once reachable) ---
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const remoteHistory = await fetchQuotes();
+        if (cancelled) return;
+        if (remoteHistory.length > 0) {
+          setHistory(remoteHistory);
+        } else {
+          await upsertQuotes(history);
+        }
+      } catch (err) {
+        if (!cancelled) reportSupabaseError(err);
+      }
+
+      try {
+        const { draft, customPrelims: remotePrelims } = await fetchAppState();
+        if (cancelled) return;
+        if (draft) {
+          setInputs(draft);
+        }
+        if (remotePrelims !== null && remotePrelims !== undefined) {
+          setCustomPrelims(remotePrelims);
+        }
+        if (!draft) {
+          await saveAppState(inputs, customPrelims);
+        }
+      } catch (err) {
+        if (!cancelled) reportSupabaseError(err);
+      } finally {
+        if (!cancelled) setIsHydrated(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // Runs once on mount to pull remote state; intentionally excludes
+    // inputs/customPrelims/history from deps (they're only read as the
+    // initial seed value if Supabase has nothing yet).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // --- Debounced push of draft + prelims to Supabase ---
+  useEffect(() => {
+    if (!isHydrated) return;
+    const timer = setTimeout(() => {
+      saveAppState(inputs, customPrelims).catch(reportSupabaseError);
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [inputs, customPrelims, isHydrated]);
 
   // Alert dismiss helper
   useEffect(() => {
@@ -319,33 +389,32 @@ export default function App() {
 
     if (editingId) {
       // Update existing
-      setHistory(prev => prev.map(q => {
-        if (q.id === editingId) {
-          return {
-            ...q,
-            date: todayStr,
-            month: monthStr,
-            projectInfo: inputs.projectInfo,
-            geometry: inputs.geometry,
-            complexity: inputs.complexity,
-            execution: inputs.execution,
-            travel: inputs.travel,
-            meeting: inputs.meeting,
-            profitMarginPercent: inputs.profitMarginPercent,
-            marginMethod: inputs.marginMethod || 'markup',
-            totalCost: results.totalCost,
-            profitAmount: results.profitAmount,
-            subtotal: results.subtotal,
-            finalPrice: results.finalPrice,
-            totalFacadeArea: results.totalFacadeArea,
-            costPerM2: results.costPerM2,
-            sellPricePerM2: results.sellPricePerM2,
-            finalRatePerM2: results.finalRatePerM2,
-            category: results.category,
-          };
-        }
-        return q;
-      }));
+      const existing = history.find(q => q.id === editingId);
+      if (!existing) return;
+      const updatedQuote: SavedQuote = {
+        ...existing,
+        date: todayStr,
+        month: monthStr,
+        projectInfo: inputs.projectInfo,
+        geometry: inputs.geometry,
+        complexity: inputs.complexity,
+        execution: inputs.execution,
+        travel: inputs.travel,
+        meeting: inputs.meeting,
+        profitMarginPercent: inputs.profitMarginPercent,
+        marginMethod: inputs.marginMethod || 'markup',
+        totalCost: results.totalCost,
+        profitAmount: results.profitAmount,
+        subtotal: results.subtotal,
+        finalPrice: results.finalPrice,
+        totalFacadeArea: results.totalFacadeArea,
+        costPerM2: results.costPerM2,
+        sellPricePerM2: results.sellPricePerM2,
+        finalRatePerM2: results.finalRatePerM2,
+        category: results.category,
+      };
+      setHistory(prev => prev.map(q => (q.id === editingId ? updatedQuote : q)));
+      upsertQuote(updatedQuote).catch(reportSupabaseError);
       setEditingId(null);
       triggerNotification(`Quote "${inputs.projectInfo.name}" updated successfully!`);
     } else {
@@ -374,6 +443,7 @@ export default function App() {
         status: 'Quoted',
       };
       setHistory(prev => [newQuote, ...prev]);
+      upsertQuote(newQuote).catch(reportSupabaseError);
       triggerNotification(`New quote "${inputs.projectInfo.name}" saved to History!`);
     }
   };
@@ -407,12 +477,14 @@ export default function App() {
       date: new Date().toISOString().split('T')[0],
     };
     setHistory(prev => [duplicated, ...prev]);
+    upsertQuote(duplicated).catch(reportSupabaseError);
     triggerNotification(`Duplicated "${quote.projectInfo.name}" successfully!`);
   };
 
   const handleDeleteQuote = (id: string, name: string) => {
     if (confirm(`Are you sure you want to permanently delete the estimate for "${name}"?`)) {
       setHistory(prev => prev.filter(q => q.id !== id));
+      deleteQuote(id).catch(reportSupabaseError);
       if (editingId === id) {
         setEditingId(null);
       }
@@ -423,7 +495,9 @@ export default function App() {
   const handleUpdateStatus = (id: string, newStatus: SavedQuote['status']) => {
     setHistory(prev => prev.map(q => {
       if (q.id === id) {
-        return { ...q, status: newStatus };
+        const updated = { ...q, status: newStatus };
+        upsertQuote(updated).catch(reportSupabaseError);
+        return updated;
       }
       return q;
     }));
@@ -1608,6 +1682,7 @@ export default function App() {
                     const seedIds = INITIAL_HISTORY.map(q => q.id);
                     const filtered = history.filter(q => !seedIds.includes(q.id));
                     setHistory([...filtered, ...INITIAL_HISTORY]);
+                    upsertQuotes(INITIAL_HISTORY).catch(reportSupabaseError);
                     triggerNotification("Seeded history rows restored successfully!");
                   }
                 }}
