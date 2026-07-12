@@ -22,20 +22,19 @@ _Última actualización: 2026-07-10_
 6. Pestaña **Configuración** — todos los parámetros del motor de precios (factores, tarifas, preliminares, reglas de categoría) editables y guardados en Supabase, compartidos entre los 3 usuarios. IDs/labels quedan fijos, solo los números son editables.
 7. NFC tags: se sacaron de los preliminares fijos; ahora hay un campo "NFC Facades" en la página principal y el costo se calcula por fachada (70 tags × $1.30 material + $0.40 instalación, todo editable en Configuración).
 
-## 🔴 Pendiente / bug abierto
+## ✅ Resuelto (2026-07-13): "pantalla en blanco"
 
-**"Al refrescar la página queda en blanco total"** — reportado por el usuario en la app en producción, **no reproducido todavía**.
+**Causa raíz encontrada:** en el hydrate de Supabase (`App.tsx`, efecto que corre una vez al montar), `setConfig(remoteConfig)` reemplazaba el `PricingConfig` completo por lo que estuviera guardado en la fila `singleton` de la tabla `pricing_config`, sin mergear con los defaults. Esa fila fue guardada por alguien vía la pestaña Configuración **antes** de que existiera el campo `nfcRates` (agregado en el commit "Move NFC tags..."). Al llegar la respuesta de Supabase (unos ms después del primer render, que sí se veía bien con `DEFAULT_PRICING_CONFIG`), `config.nfcRates` quedaba `undefined`, y `calculator.ts:125` (`config.nfcRates.tagsPerFacade`) tiraba un `TypeError` durante el render. Como no había ningún `ErrorBoundary` en la app, React desmontaba todo el árbol → pantalla en blanco total, sin nada en pantalla que lo delatara (solo un error en consola que nadie miró).
 
-Lo que se intentó sin éxito:
-- Simular en local (con arnés de Playwright + sesión falsa, bypaseando AuthGate) un borrador viejo en `localStorage` con la forma anterior de `execution` (sin el campo `nfcFacadeCount` nuevo) → la página cargó bien, sin blank page ni errores de consola.
-- Confirmar que el bundle desplegado en Vercel es el último (contiene el texto "NFC Facades") y que el `index.html` tiene `cache-control: max-age=0, must-revalidate` (no debería quedar cacheado agresivamente).
+Esto también explica el patrón "ya funcionó, y después quedó en blanco": el primer paint usa el config default en memoria (funciona), y se rompe cuando termina de llegar el config viejo desde Supabase.
 
-El usuario dijo "ya funcionó" y luego "queda en blanco" de nuevo — no quedó claro si un refresco forzado (`Cmd+Shift+R`) lo arregla de forma consistente o fue casualidad.
+**Fix aplicado:**
+1. `App.tsx` ahora mergea `remoteConfig` sobre `DEFAULT_PRICING_CONFIG` (incluyendo los objetos anidados `dronePilotRates`, `execRates`, `nfcRates`) en vez de reemplazar el config entero — así un campo nuevo que falte en una fila vieja de Supabase nunca queda `undefined`.
+2. Se agregó `src/components/ErrorBoundary.tsx`, envolviendo `AuthGate`/`App` en `main.tsx`. Si algo similar vuelve a pasar, ahora se ve un mensaje de error en pantalla (con el texto exacto) y un botón para "Borrar datos locales y recargar", en vez de blanco total sin salida.
 
-**Siguiente paso al retomar:** pedirle al usuario el error exacto de la consola del navegador (Safari → clic derecho → Inspeccionar Elemento → pestaña Consola) cuando le pase el blank page. Sin ese dato es adivinar a ciegas. Sospechas no confirmadas, en orden de probabilidad:
-1. Algo en `localStorage` (`aimms_current_draft` o `aimms_project_history`) con una forma vieja de los datos que rompe en un caso específico no cubierto por la prueba simulada (ej. una cotización guardada en el historial, no el borrador activo).
-2. Comportamiento específico de Safari con bfcache / módulos ES al refrescar.
-3. Alguna carrera entre la hidratación de Supabase y el primer render (menos probable, ya hay manejo de errores ahí).
+Nota de implementación: este proyecto no tiene `@types/react` instalado, así que una clase que extiende `React.Component<Props, State>` no infiere bien `this.props` — hubo que redeclarar `props: Props` explícito en el constructor (mismo patrón que ya existía para `key` en `SettingsPanel.tsx`).
+
+**Pendiente de verificar:** confirmar con el usuario que no vuelve a pasar. Si vuelve a pasar, ahora el ErrorBoundary debería mostrar el mensaje exacto en vez de blanco — pedir ese texto.
 
 ## Notas técnicas para retomar
 

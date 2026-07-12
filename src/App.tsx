@@ -173,7 +173,16 @@ export default function App({ session }: AppProps) {
         const remoteConfig = await fetchPricingConfig();
         if (cancelled) return;
         if (remoteConfig) {
-          setConfig(remoteConfig);
+          // Merge onto defaults so a config row saved before a newer field
+          // existed (e.g. nfcRates) never leaves that field undefined --
+          // that used to crash the render with no ErrorBoundary to catch it.
+          setConfig({
+            ...DEFAULT_PRICING_CONFIG,
+            ...remoteConfig,
+            dronePilotRates: { ...DEFAULT_PRICING_CONFIG.dronePilotRates, ...remoteConfig.dronePilotRates },
+            execRates: { ...DEFAULT_PRICING_CONFIG.execRates, ...remoteConfig.execRates },
+            nfcRates: { ...DEFAULT_PRICING_CONFIG.nfcRates, ...remoteConfig.nfcRates },
+          });
         } else {
           await savePricingConfig(DEFAULT_PRICING_CONFIG);
         }
