@@ -1315,7 +1315,7 @@ export default function App({ session }: AppProps) {
                             : 'text-slate-500 hover:text-slate-900'
                         }`}
                       >
-                        Contractor Pilot
+                        Contractor Crew
                       </button>
                     </div>
                   </div>
