@@ -1462,8 +1462,8 @@ export default function App({ session }: AppProps) {
 
             {/* RIGHT COLUMN: Sticky summary side-panel (Real-time estimate) */}
             <div className="lg:col-span-4 lg:sticky lg:top-8 space-y-6">
-              
-              <div className="bg-white border-2 border-slate-900 rounded-3xl shadow-xl overflow-hidden flex flex-col">
+
+              <div className="bg-white border-2 border-slate-900 rounded-3xl shadow-xl overflow-y-auto flex flex-col lg:max-h-[calc(100vh-4rem)]">
                 
                 {/* Visual Header card decoration */}
                 <div className="bg-aimms-dark text-white p-6 space-y-2">
