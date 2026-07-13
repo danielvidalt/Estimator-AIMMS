@@ -886,23 +886,22 @@ export default function App({ session }: AppProps) {
                     )}
                   </div>
                 ) : (
-                  // Direct input facade area
+                  // Direct facade area, auto-calculated (read-only)
                   <div className="bg-slate-50 p-4.5 rounded-xl border border-slate-200">
                     <div className="flex flex-col gap-1 mb-2 text-left">
                       <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
-                        Direct Facade Area Override (m²)
+                        Direct Facade Area (m²)
                       </label>
                       <span className="text-xs text-slate-400 font-medium">
-                        0 uses Auto-calculation ({inputs.geometry.buildingPerimeter}m × {inputs.geometry.buildingHeight}m = {inputs.geometry.buildingPerimeter * inputs.geometry.buildingHeight}m²)
+                        Auto-calculated: {inputs.geometry.buildingPerimeter}m × {inputs.geometry.buildingHeight}m
                       </span>
                     </div>
                     <div className="relative">
                       <input
                         type="number"
-                        placeholder={`${inputs.geometry.buildingPerimeter * inputs.geometry.buildingHeight}`}
-                        value={inputs.geometry.directFacadeArea || ""}
-                        onChange={(e) => updateGeometry('directFacadeArea', Math.max(0, parseFloat(e.target.value) || 0))}
-                        className="w-full px-4 py-2 border border-slate-200 rounded-lg text-slate-805 text-sm md:text-base font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500/20 font-mono text-center"
+                        disabled
+                        value={inputs.geometry.buildingPerimeter * inputs.geometry.buildingHeight}
+                        className="w-full px-4 py-2 border border-slate-200 rounded-lg text-slate-500 text-sm md:text-base font-bold focus:outline-none font-mono text-center bg-slate-100 cursor-not-allowed"
                       />
                     </div>
                   </div>
