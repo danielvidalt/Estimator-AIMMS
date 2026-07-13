@@ -32,7 +32,8 @@ import {
   RefreshCw,
   FolderOpen,
   ChevronRight,
-  Settings
+  Settings,
+  Lock
 } from 'lucide-react';
 
 import {
@@ -559,6 +560,7 @@ export default function App({ session }: AppProps) {
   // Pre-calculations for display
   const baseComplexityDetails = COMPLEXITY_BASE.find(c => c.id === inputs.complexity.baseLevelId) || COMPLEXITY_BASE[0];
   const activeZoneObj = LOCATION_ZONES.find(l => l.id === inputs.complexity.locationId) || LOCATION_ZONES[0];
+  const isLocalZone = inputs.complexity.locationId === 'nsw';
   const catRuleColor = CATEGORY_RULES.find(r => results.category === r.category) || CATEGORY_RULES[2];
 
   const prelimBreakdown = getPreliminariesBreakdown(config);
@@ -1283,114 +1285,130 @@ export default function App({ session }: AppProps) {
                     04
                   </span>
                   <div className="flex-1 flex flex-col justify-start">
-                    <h2 className="text-base font-display font-extrabold text-slate-900 tracking-tight">Travel & Mobilisation</h2>
+                    <h2 className="text-base font-display font-extrabold text-slate-900 tracking-tight flex items-center gap-1.5">
+                      Travel & Mobilisation
+                      {isLocalZone && (
+                        <span className="relative inline-flex group/tip">
+                          <Lock className="w-3.5 h-3.5 text-slate-400" />
+                          <FieldTooltip
+                            align="center"
+                            text="Travel & Mobilisation is locked because the Project Location Zone (section 2) is set to NSW (Local) -- local projects have no flights, accommodation, or travel allowance costs. Switch the zone to Regional or Remote to unlock it."
+                          />
+                        </span>
+                      )}
+                    </h2>
                     <span className="text-xs text-slate-500 font-bold block mt-0.5">
                       Flights ${activeZoneObj.flight} &bull; Accom ${activeZoneObj.accom}
                     </span>
                   </div>
                 </div>
 
-                {/* Execution Type Radio Selector */}
-                <div className="space-y-4">
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
-                      Execution Team Source
-                    </label>
-                    <div className="grid grid-cols-2 gap-1.5 bg-slate-100 p-1.5 rounded-xl">
-                      <button
-                        onClick={() => updateTravel('executionType', 'internal')}
-                        className={`py-2 rounded-lg text-xs font-bold transition duration-200 cursor-pointer ${
-                          inputs.travel.executionType === 'internal'
-                            ? 'bg-aimms-blue text-white shadow-xs'
-                            : 'text-slate-500 hover:text-slate-900'
-                        }`}
-                      >
-                        Internal Team
-                      </button>
-                      <button
-                        onClick={() => updateTravel('executionType', 'contractor')}
-                        className={`py-2 rounded-lg text-xs font-bold transition duration-200 cursor-pointer ${
-                          inputs.travel.executionType === 'contractor'
-                            ? 'bg-aimms-blue text-white shadow-xs'
-                            : 'text-slate-500 hover:text-slate-900'
-                        }`}
-                      >
-                        Contractor Crew
-                      </button>
+                <fieldset
+                  disabled={isLocalZone}
+                  className={`min-w-0 border-0 p-0 m-0 space-y-5 transition-opacity ${isLocalZone ? 'opacity-40 grayscale-[60%] cursor-not-allowed' : ''}`}
+                >
+                  {/* Execution Type Radio Selector */}
+                  <div className="space-y-4">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
+                        Execution Team Source
+                      </label>
+                      <div className="grid grid-cols-2 gap-1.5 bg-slate-100 p-1.5 rounded-xl">
+                        <button
+                          onClick={() => updateTravel('executionType', 'internal')}
+                          className={`py-2 rounded-lg text-xs font-bold transition duration-200 cursor-pointer ${
+                            inputs.travel.executionType === 'internal'
+                              ? 'bg-aimms-blue text-white shadow-xs'
+                              : 'text-slate-500 hover:text-slate-900'
+                          }`}
+                        >
+                          Internal Team
+                        </button>
+                        <button
+                          onClick={() => updateTravel('executionType', 'contractor')}
+                          className={`py-2 rounded-lg text-xs font-bold transition duration-200 cursor-pointer ${
+                            inputs.travel.executionType === 'contractor'
+                              ? 'bg-aimms-blue text-white shadow-xs'
+                              : 'text-slate-500 hover:text-slate-900'
+                          }`}
+                        >
+                          Contractor Crew
+                        </button>
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
-                      Travelling field staff count
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={inputs.travel.travellingMembers}
-                      onChange={(e) => updateTravel('travellingMembers', Math.max(0, parseInt(e.target.value) || 0))}
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-slate-800 text-sm md:text-base font-bold font-mono focus:outline-none focus:ring-2 focus:ring-aimms-blue/20 text-center"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-3 gap-2">
-                  <div className="space-y-1.5 bg-slate-50/50 p-2.5 rounded-xl border border-slate-100 hover:border-slate-200 transition">
-                    <label className="text-xs font-bold text-slate-500 uppercase tracking-tight block">
-                      Nights
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={inputs.travel.accommodationNights}
-                      onChange={(e) => updateTravel('accommodationNights', Math.max(0, parseInt(e.target.value) || 0))}
-                      className="w-full bg-white px-2 py-2 border border-slate-200 rounded-lg text-slate-800 text-sm font-bold text-center font-mono focus:outline-none focus:ring-2 focus:ring-aimms-blue/20"
-                    />
-                  </div>
-
-                  <div className="space-y-1.5 bg-slate-50/50 p-2.5 rounded-xl border border-slate-100 hover:border-slate-200 transition">
-                    <label className="text-xs font-bold text-slate-500 uppercase tracking-tight block">
-                      Days
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={inputs.travel.travelDays}
-                      onChange={(e) => updateTravel('travelDays', Math.max(0, parseInt(e.target.value) || 0))}
-                      className="w-full bg-white px-2 py-2 border border-slate-200 rounded-lg text-slate-800 text-sm font-bold text-center font-mono focus:outline-none focus:ring-2 focus:ring-aimms-blue/20"
-                    />
-                  </div>
-
-                  <div className="space-y-1.5 bg-slate-50/50 p-2.5 rounded-xl border border-slate-100 hover:border-slate-200 transition">
-                    <label className="text-xs font-bold text-slate-500 uppercase tracking-tight block">
-                      Cargo ($)
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={inputs.travel.equipmentTransportCost}
-                      onChange={(e) => updateTravel('equipmentTransportCost', Math.max(0, parseFloat(e.target.value) || 0))}
-                      className="w-full bg-white px-2 py-2 border border-slate-200 rounded-lg text-slate-800 text-sm font-bold text-center font-mono focus:outline-none focus:ring-2 focus:ring-aimms-blue/20"
-                    />
-                  </div>
-                </div>
-
-                {inputs.travel.executionType === 'contractor' && (
-                  <div className="p-4 bg-rose-50/50 border border-rose-200/50 rounded-2xl space-y-2">
-                    <h4 className="text-xs font-bold text-rose-900 uppercase tracking-wider">Contractor Daily Rate</h4>
-                    <p className="text-xs text-rose-700 leading-tight">Optionally specify contractor cost per day override</p>
-                    <div className="relative">
-                      <span className="absolute left-3 top-2.5 text-rose-600 font-mono text-sm font-bold">$</span>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
+                        Travelling field staff count
+                      </label>
                       <input
                         type="number"
-                        placeholder="Daily contractor rate"
-                        value={inputs.travel.contractorLabourCostOverride ?? ""}
-                        onChange={(e) => updateTravel('contractorLabourCostOverride', parseFloat(e.target.value) || undefined)}
-                        className="w-full pl-7 pr-3 py-2 border border-rose-200 rounded-lg text-slate-800 text-sm font-bold font-mono focus:outline-none focus:ring-2 focus:ring-rose-500 bg-white"
+                        min="0"
+                        value={inputs.travel.travellingMembers}
+                        onChange={(e) => updateTravel('travellingMembers', Math.max(0, parseInt(e.target.value) || 0))}
+                        className="w-full px-3 py-2 border border-slate-200 rounded-lg text-slate-800 text-sm md:text-base font-bold font-mono focus:outline-none focus:ring-2 focus:ring-aimms-blue/20 text-center"
                       />
                     </div>
                   </div>
-                )}
+
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="space-y-1.5 bg-slate-50/50 p-2.5 rounded-xl border border-slate-100 hover:border-slate-200 transition">
+                      <label className="text-xs font-bold text-slate-500 uppercase tracking-tight block">
+                        Nights
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={inputs.travel.accommodationNights}
+                        onChange={(e) => updateTravel('accommodationNights', Math.max(0, parseInt(e.target.value) || 0))}
+                        className="w-full bg-white px-2 py-2 border border-slate-200 rounded-lg text-slate-800 text-sm font-bold text-center font-mono focus:outline-none focus:ring-2 focus:ring-aimms-blue/20"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5 bg-slate-50/50 p-2.5 rounded-xl border border-slate-100 hover:border-slate-200 transition">
+                      <label className="text-xs font-bold text-slate-500 uppercase tracking-tight block">
+                        Days
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={inputs.travel.travelDays}
+                        onChange={(e) => updateTravel('travelDays', Math.max(0, parseInt(e.target.value) || 0))}
+                        className="w-full bg-white px-2 py-2 border border-slate-200 rounded-lg text-slate-800 text-sm font-bold text-center font-mono focus:outline-none focus:ring-2 focus:ring-aimms-blue/20"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5 bg-slate-50/50 p-2.5 rounded-xl border border-slate-100 hover:border-slate-200 transition">
+                      <label className="text-xs font-bold text-slate-500 uppercase tracking-tight block">
+                        Cargo ($)
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={inputs.travel.equipmentTransportCost}
+                        onChange={(e) => updateTravel('equipmentTransportCost', Math.max(0, parseFloat(e.target.value) || 0))}
+                        className="w-full bg-white px-2 py-2 border border-slate-200 rounded-lg text-slate-800 text-sm font-bold text-center font-mono focus:outline-none focus:ring-2 focus:ring-aimms-blue/20"
+                      />
+                    </div>
+                  </div>
+
+                  {inputs.travel.executionType === 'contractor' && (
+                    <div className="p-4 bg-rose-50/50 border border-rose-200/50 rounded-2xl space-y-2">
+                      <h4 className="text-xs font-bold text-rose-900 uppercase tracking-wider">Contractor Daily Rate</h4>
+                      <p className="text-xs text-rose-700 leading-tight">Optionally specify contractor cost per day override</p>
+                      <div className="relative">
+                        <span className="absolute left-3 top-2.5 text-rose-600 font-mono text-sm font-bold">$</span>
+                        <input
+                          type="number"
+                          placeholder="Daily contractor rate"
+                          value={inputs.travel.contractorLabourCostOverride ?? ""}
+                          onChange={(e) => updateTravel('contractorLabourCostOverride', parseFloat(e.target.value) || undefined)}
+                          className="w-full pl-7 pr-3 py-2 border border-rose-200 rounded-lg text-slate-800 text-sm font-bold font-mono focus:outline-none focus:ring-2 focus:ring-rose-500 bg-white"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </fieldset>
               </section>
 
               {/* SECTION 5: Estimator / Client Meeting */}
