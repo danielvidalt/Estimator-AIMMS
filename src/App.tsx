@@ -1010,15 +1010,15 @@ export default function App({ session }: AppProps) {
                         <button
                           key={adj.id}
                           onClick={() => handleToggleAdjustment(adj.id)}
-                          className={`p-2.5 rounded-xl border-2 text-xs font-bold text-left transition flex items-center justify-between gap-1.5 cursor-pointer ${
+                          className={`p-2.5 rounded-xl border-2 text-xs font-bold text-left transition flex items-start justify-between gap-1.5 cursor-pointer ${
                             isActive
                               ? 'bg-aimms-blue border-aimms-blue text-white shadow-md shadow-aimms-blue/20'
                               : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300'
                           }`}
                         >
-                          <span className="flex items-center gap-1.5 truncate">
-                            {isActive && <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />}
-                            <span className="truncate font-extrabold">{adj.label}</span>
+                          <span className="flex items-start gap-1.5 min-w-0">
+                            {isActive && <CheckCircle2 className="w-3.5 h-3.5 shrink-0 mt-0.5" />}
+                            <span className="font-extrabold">{adj.label}</span>
                           </span>
                           <span className={`font-mono text-[10px] font-black shrink-0 px-1.5 py-0.5 rounded ${
                             isActive ? 'bg-aimms-dark text-sky-200' : 'bg-slate-100 text-slate-500'
