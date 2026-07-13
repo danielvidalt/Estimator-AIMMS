@@ -1100,7 +1100,7 @@ export default function App({ session }: AppProps) {
                   <div className="relative group/tip space-y-1.5 bg-slate-50/50 p-2.5 rounded-xl border border-slate-100 hover:border-slate-200 transition">
                     <FieldTooltip
                       align="left"
-                      text="Días que dura la inspección (rope access). Este ítem no considera el vuelo de dron como inspección."
+                      text="Days the inspection takes (rope access). This item does not include drone flights as inspection time."
                     />
                     <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
                       Inspection Days
@@ -1116,7 +1116,7 @@ export default function App({ session }: AppProps) {
 
                   <div className="relative group/tip space-y-1.5 bg-slate-50/50 p-2.5 rounded-xl border border-slate-100 hover:border-slate-200 transition">
                     <FieldTooltip
-                      text="Número de personas que conforman el equipo de facade technicians (rope access). Por lo general, un mínimo de 2 personas."
+                      text="Number of people on the facade technicians team (rope access). Usually a minimum of 2 people."
                     />
                     <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
                       Team Size
@@ -1132,7 +1132,7 @@ export default function App({ session }: AppProps) {
 
                   <div className="relative group/tip space-y-1.5 bg-slate-50/50 p-2.5 rounded-xl border border-slate-100 hover:border-slate-200 transition">
                     <FieldTooltip
-                      text="Días que dura la instalación de los NFC tags en el edificio. Depende de si se instala solo uno por drop (rooftop) o uno por sector/cuadrante (ej. L1/D1, L5/D2), y de si se instala en las 4 fachadas o solo en algunas."
+                      text="Days it takes to install the NFC tags on the building. Depends on whether only one tag is installed per drop (rooftop only) or one per section/quadrant (e.g. L1/D1, L5/D2), and whether it's installed on all 4 facades or only some."
                     />
                     <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
                       NFC Inst. Days
@@ -1148,7 +1148,7 @@ export default function App({ session }: AppProps) {
 
                   <div className="relative group/tip space-y-1.5 bg-slate-50/50 p-2.5 rounded-xl border border-slate-100 hover:border-slate-200 transition">
                     <FieldTooltip
-                      text="Ubicación de los NFC tags: si es en el edificio completo o solo en alguna fachada en particular. Define la cantidad de tags a instalar, lo que se refleja en el costo."
+                      text="Location of the NFC tags: whether across the entire building or only on a particular facade. Determines how many tags are installed, which is reflected in the cost."
                     />
                     <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
                       NFC Facades
@@ -1164,7 +1164,7 @@ export default function App({ session }: AppProps) {
 
                   <div className="relative group/tip space-y-1.5 bg-slate-50/50 p-2.5 rounded-xl border border-slate-100 hover:border-slate-200 transition">
                     <FieldTooltip
-                      text="Días que toma marcar todos los defectos encontrados en la inspección sobre el modelo 3D. Por lo general varía entre 2 y 4 días laborales según la cantidad de defectos."
+                      text="Days it takes to mark all defects found during the inspection on the 3D model. Usually ranges from 2 to 4 working days depending on the number of defects found."
                     />
                     <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
                       3D model (days)
@@ -1181,7 +1181,7 @@ export default function App({ session }: AppProps) {
                   <div className="relative group/tip space-y-1.5 bg-slate-50/50 p-2.5 rounded-xl border border-slate-100 hover:border-slate-200 transition">
                     <FieldTooltip
                       align="right"
-                      text="Días que se toman para armar el facade remedial report."
+                      text="Days it takes to put together the facade remedial report."
                     />
                     <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">
                       Report Days
