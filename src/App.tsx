@@ -928,9 +928,15 @@ export default function App({ session }: AppProps) {
 
                 {/* Complexity Base cards */}
                 <div className="space-y-3">
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">
-                    1. Base Complexity Level
-                  </label>
+                  <div className="relative inline-block group/tip">
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider cursor-help">
+                      1. Base Complexity Level
+                    </label>
+                    <FieldTooltip
+                      align="left"
+                      text="Building complexity level, based on inspection and rope access work considerations."
+                    />
+                  </div>
                   <div className="grid grid-cols-1 gap-2">
                     {COMPLEXITY_BASE.map((lvl, lvlIdx) => {
                       const isSelected = inputs.complexity.baseLevelId === lvl.id;
