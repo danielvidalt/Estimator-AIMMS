@@ -33,7 +33,8 @@ import {
   FolderOpen,
   ChevronRight,
   Settings,
-  Lock
+  Lock,
+  ShieldCheck
 } from 'lucide-react';
 
 import {
@@ -55,6 +56,8 @@ import PrintQuotePreview from './components/PrintQuotePreview';
 import SettingsPanel from './components/SettingsPanel';
 import { Logo } from './components/Logo';
 import { FieldTooltip } from './components/FieldTooltip';
+import AdminLogin from './components/AdminLogin';
+import { ADMIN_EMAIL } from './lib/adminConfig';
 import { fetchQuotes, upsertQuote, upsertQuotes, deleteQuote } from './lib/quotesService';
 import { fetchAppState, saveAppState } from './lib/appStateService';
 import { fetchPricingConfig, savePricingConfig } from './lib/pricingConfigService';
@@ -104,6 +107,13 @@ export default function App({ session }: AppProps) {
   // Sidebar expanded settings, alerts state, modals
   const [isPrelimModalOpen, setIsPrelimModalOpen] = useState(false);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+  const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
+  const isAdmin = session.user.email === ADMIN_EMAIL;
+
+  const handleExitAdmin = async () => {
+    await supabase.auth.signOut();
+    await supabase.auth.signInAnonymously();
+  };
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'info' | 'error' } | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
 
@@ -640,20 +650,35 @@ export default function App({ session }: AppProps) {
               }`}
             >
               <Settings className="w-4 h-4" />
-              <span>Configuración</span>
+              <span>Settings</span>
             </button>
           </div>
 
-          {/* Signed-in user + sign out */}
+          {/* Discreet admin access -- no account needed for regular use */}
           <div className="flex items-center gap-3">
-            <span className="text-xs text-slate-400 truncate max-w-[160px]">{session.user.email}</span>
-            <button
-              onClick={() => supabase.auth.signOut()}
-              title="Cerrar sesión"
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-800 transition cursor-pointer"
-            >
-              <LogOut className="w-4 h-4" />
-            </button>
+            {isAdmin ? (
+              <>
+                <span className="text-xs text-emerald-400 font-bold flex items-center gap-1">
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  Admin
+                </span>
+                <button
+                  onClick={handleExitAdmin}
+                  title="Exit admin mode"
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-800 transition cursor-pointer"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={() => setIsAdminModalOpen(true)}
+                title="Admin sign in"
+                className="text-slate-500 hover:text-white p-2 rounded-xl hover:bg-slate-800 transition cursor-pointer"
+              >
+                <ShieldCheck className="w-4 h-4" />
+              </button>
+            )}
           </div>
         </div>
       </header>
@@ -1983,11 +2008,27 @@ export default function App({ session }: AppProps) {
               </div>
             )}
           </div>
-        ) : (
+        ) : isAdmin ? (
           <SettingsPanel config={config} onSave={handleSaveConfig} />
+        ) : (
+          <div className="bg-white rounded-3xl border border-slate-200/80 shadow-md p-12 text-center space-y-4 max-w-lg mx-auto">
+            <Lock className="w-8 h-8 mx-auto text-slate-300" />
+            <h2 className="text-lg font-display font-black text-slate-900">Admin access required</h2>
+            <p className="text-sm text-slate-500">
+              Pricing engine settings can only be changed by the admin account.
+            </p>
+            <button
+              onClick={() => setIsAdminModalOpen(true)}
+              className="bg-aimms-blue text-white font-bold py-2.5 px-5 rounded-xl hover:opacity-90 transition cursor-pointer"
+            >
+              Sign in as Admin
+            </button>
+          </div>
         )}
 
       </main>
+
+      {isAdminModalOpen && <AdminLogin onClose={() => setIsAdminModalOpen(false)} />}
 
       {/* MODALS */}
       <PreliminariesModal

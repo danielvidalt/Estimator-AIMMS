@@ -1,16 +1,19 @@
 # Handoff — Estimator AIMMS
 
-_Última actualización: 2026-07-10_
+_Última actualización: 2026-07-14_
 
 ## Estado general
 
 - **App en vivo:** https://estimator-aimms.vercel.app (Vercel, auto-deploy en cada push a `main` del repo `danielvidalt/Estimator-AIMMS`).
-- **Backend:** Supabase (`iyxcjzhyuxygxrfmybkt`). Auth por email/password, registro abierto, sesión persistente (no hay que volver a loguearse).
-- **3 tablas en Supabase, todas con RLS `to authenticated`** (confirmado que las 3 migraciones ya se ejecutaron correctamente — la última prueba mostró error de RLS, no de "tabla no existe"):
-  - `quotes` — historial de cotizaciones, compartido entre los 3 usuarios.
-  - `app_state` — borrador actual + override de preliminares (fila única `singleton`).
-  - `pricing_config` — todos los parámetros editables del motor de precios (fila única `singleton`).
-- Archivos de migración en `supabase/migrations/` (por si hay que recrear el proyecto Supabase desde cero).
+- **Backend:** Supabase (`iyxcjzhyuxygxrfmybkt`).
+- **Acceso (2026-07-14, cambio de arquitectura): sin cuentas de usuario.** Cualquier visitante entra directo, sin login — por atrás recibe una sesión anónima de Supabase (`signInAnonymously()`, ver `src/components/SessionGate.tsx`, que reemplazó a `AuthGate.tsx`). Solo existe un login real, oculto detrás de un ícono de escudo en el header: el admin (`danielvidal.t@gmail.com`, hardcodeado en `src/lib/adminConfig.ts`), que desbloquea la pestaña **Settings** (antes "Configuración") para editar los parámetros del motor de precios. `src/components/AdminLogin.tsx` es el modal de sign-in (sin registro, la cuenta admin ya existe).
+  - **Requiere un toggle manual en el dashboard de Supabase** (no se puede hacer por SQL/migración): Authentication → Settings → "Allow anonymous sign-ins". Sin esto, `signInAnonymously()` falla con 422 y la app muestra una pantalla de error explicándolo — confirmado en vivo el 2026-07-14, el toggle todavía no estaba activado.
+- **3 tablas en Supabase, todas con RLS `to authenticated`** (las sesiones anónimas también tienen role `authenticated`, así que las políticas existentes ya las cubren):
+  - `quotes` — historial de cotizaciones, ahora compartido con cualquier visitante (no solo 3 usuarios).
+  - `app_state` — borrador actual + override de preliminares (fila única `singleton`, compartida por todos).
+  - `pricing_config` — parámetros del motor de precios. Desde la migración `20260714000000_open_access_admin_config.sql`, el SELECT es abierto a cualquier autenticado (incl. anónimos, para que la calculadora funcione), pero el INSERT/UPDATE queda restringido por RLS a `auth.jwt()->>'email' = 'danielvidal.t@gmail.com'` — el admin es el único que puede guardar cambios, reforzado en la base de datos, no solo en la UI.
+- Archivos de migración en `supabase/migrations/` (por si hay que recrear el proyecto Supabase desde cero). **La migración `20260714000000` todavía no se corrió contra la base real** — hay que ejecutarla en el SQL Editor de Supabase.
+- No hay sync en tiempo real (websockets) entre pestañas/usuarios simultáneos — cada quien ve los últimos datos guardados al cargar/refrescar, pero dos personas con la app abierta a la vez no ven los cambios del otro sin recargar. Si se necesita eso, falta agregar `supabase.channel(...).on('postgres_changes', ...)`.
 
 ## Funcionalidad construida esta sesión
 
@@ -38,6 +41,6 @@ Nota de implementación: este proyecto no tiene `@types/react` instalado, así q
 
 ## Notas técnicas para retomar
 
-- Para debug local sin depender de login real: recrear `src/main.debug.tsx` + `debug.html` en la raíz (bypasea `AuthGate` con una sesión falsa), correr `npm run dev`, y usar Playwright (`npx playwright install chromium` si hace falta) contra `http://localhost:3000/debug.html`. **Borrar ambos archivos antes de commitear** — no van al repo.
+- Para debug local sin depender de Supabase real: recrear `src/main.debug.tsx` + `debug.html` en la raíz (pasa una sesión falsa directo a `<App>`, saltando `SessionGate`; agregar `?admin=1` a la URL en el fake session para probar el modo admin), correr `npm run dev`, y usar Playwright (`npx playwright install chromium` si hace falta) contra `http://localhost:3000/debug.html`. **Borrar ambos archivos antes de commitear** — no van al repo.
 - `npm run lint` = `tsc --noEmit`, `npm run build` = build de producción. Ambos deben pasar antes de cualquier commit.
 - No hay `@types/react` instalado en este proyecto (raro, pero así está); si TypeScript se queja de la prop `key` en un componente propio, hay que agregar `key?: string | number` explícito al tipo de props de ese componente (ver `SettingsPanel.tsx` como ejemplo).

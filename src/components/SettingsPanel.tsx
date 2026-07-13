@@ -91,7 +91,7 @@ function NumField({
 
 function NoLimitBadge() {
   return (
-    <span className="w-28 text-right text-xs font-mono text-slate-400 italic pr-2">Sin límite</span>
+    <span className="w-28 text-right text-xs font-mono text-slate-400 italic pr-2">No limit</span>
   );
 }
 
@@ -137,10 +137,10 @@ export default function SettingsPanel({ config, onSave }: SettingsPanelProps) {
         <div className="flex items-center gap-3">
           <Settings className="w-6 h-6 text-sky-300 shrink-0" />
           <div>
-            <h1 className="text-base font-display font-black">Configuración del motor de precios</h1>
+            <h1 className="text-base font-display font-black">Pricing Engine Settings</h1>
             <p className="text-xs text-slate-350 mt-0.5">
-              Los IDs y etiquetas quedan fijos; solo los números ($ y factores) son editables. Los cambios se guardan
-              para los 3 usuarios del equipo.
+              IDs and labels stay fixed; only the numbers ($ and factors) are editable. Changes apply to every
+              estimate as soon as you save.
             </p>
           </div>
         </div>
@@ -150,14 +150,14 @@ export default function SettingsPanel({ config, onSave }: SettingsPanelProps) {
             className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-slate-300 hover:text-white hover:bg-slate-800 transition cursor-pointer"
           >
             <RefreshCw className="w-3.5 h-3.5" />
-            Restablecer a fábrica
+            Reset to factory defaults
           </button>
           <button
             onClick={() => onSave(buffer)}
             className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-aimms-blue text-white hover:opacity-90 transition cursor-pointer"
           >
             <Save className="w-3.5 h-3.5" />
-            Guardar cambios
+            Save changes
           </button>
         </div>
       </div>
@@ -366,7 +366,7 @@ export default function SettingsPanel({ config, onSave }: SettingsPanelProps) {
         </div>
         <div className="flex items-start gap-2 text-xs text-slate-500 max-w-sm">
           <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-amber-500" />
-          <span>Estos cambios se aplican a todos los cálculos nuevos en cuanto guardas. Las cotizaciones ya guardadas en el historial no se recalculan.</span>
+          <span>These changes apply to all new calculations as soon as you save. Quotes already saved in the history are not recalculated.</span>
         </div>
       </div>
     </div>
