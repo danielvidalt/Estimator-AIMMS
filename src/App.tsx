@@ -1476,9 +1476,12 @@ export default function App({ session }: AppProps) {
                   <h3 className="font-display font-black text-xl text-white">
                     {inputs.projectInfo.name || "New Inspection Project"}
                   </h3>
-                  <p className="text-slate-400 text-sm flex items-center gap-1 max-w-full truncate font-semibold">
+                  <p className="text-slate-400 text-sm flex items-center gap-1 max-w-full font-semibold">
                     <MapPin className="w-4 h-4 text-slate-500 shrink-0" />
-                    {inputs.projectInfo.address || "Address unspecified"}
+                    <span className="flex min-w-0">
+                      <span className="truncate">{inputs.projectInfo.address || "Address unspecified"}</span>
+                      <span className="shrink-0">, {inputs.projectInfo.state}</span>
+                    </span>
                   </p>
                 </div>
 
