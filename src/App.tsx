@@ -1209,26 +1209,38 @@ export default function App({ session }: AppProps) {
                     <p className="text-xs text-slate-500 mt-0.5">Internal vs professional subcontractor rates</p>
                   </div>
                   <div className="flex items-center gap-1.5 bg-slate-200/80 p-1.5 rounded-xl shrink-0">
-                    <button
-                      onClick={() => setInputs(prev => ({ ...prev, execution: { ...prev.execution, dronePilotType: 'internal' } }))}
-                      className={`px-4 py-2.5 rounded-lg text-xs font-bold transition duration-200 cursor-pointer ${
-                        inputs.execution.dronePilotType == 'internal'
-                          ? 'bg-aimms-blue text-white shadow-xs'
-                          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-300/40'
-                      }`}
-                    >
-                      Internal - $300/day
-                    </button>
-                    <button
-                      onClick={() => setInputs(prev => ({ ...prev, execution: { ...prev.execution, dronePilotType: 'external' } }))}
-                      className={`px-4 py-2.5 rounded-lg text-xs font-bold transition duration-200 cursor-pointer ${
-                        inputs.execution.dronePilotType == 'external'
-                          ? 'bg-aimms-blue text-white shadow-xs'
-                          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-300/40'
-                      }`}
-                    >
-                      Contractor - $700/day
-                    </button>
+                    <div className="relative group/tip">
+                      <button
+                        onClick={() => setInputs(prev => ({ ...prev, execution: { ...prev.execution, dronePilotType: 'internal' } }))}
+                        className={`px-4 py-2.5 rounded-lg text-xs font-bold transition duration-200 cursor-pointer ${
+                          inputs.execution.dronePilotType == 'internal'
+                            ? 'bg-aimms-blue text-white shadow-xs'
+                            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-300/40'
+                        }`}
+                      >
+                        Internal - $300/day
+                      </button>
+                      <FieldTooltip
+                        align="left"
+                        text="Uses a drone pilot from the CPR team (Daniel)."
+                      />
+                    </div>
+                    <div className="relative group/tip">
+                      <button
+                        onClick={() => setInputs(prev => ({ ...prev, execution: { ...prev.execution, dronePilotType: 'external' } }))}
+                        className={`px-4 py-2.5 rounded-lg text-xs font-bold transition duration-200 cursor-pointer ${
+                          inputs.execution.dronePilotType == 'external'
+                            ? 'bg-aimms-blue text-white shadow-xs'
+                            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-300/40'
+                        }`}
+                      >
+                        Contractor - $700/day
+                      </button>
+                      <FieldTooltip
+                        align="right"
+                        text="Uses an external pilot (mainly outside NSW)."
+                      />
+                    </div>
                   </div>
                 </div>
 
