@@ -61,8 +61,10 @@ export interface EstimateInputs {
   execution: ExecutionData;
   travel: TravelData;
   meeting: EstimatorMeetingData;
-  profitMarginPercent: number; // default: 30
-  marginMethod?: 'markup' | 'gross'; // 'markup' (on cost) or 'gross' (gross return)
+  // Independent, optional: either, both, or neither can be set. null means
+  // that pricing method isn't used for this estimate.
+  markupPercent: number | null;
+  grossReturnPercent: number | null;
 }
 
 export interface EstimateResults {
@@ -109,17 +111,13 @@ export interface EstimateResults {
   // Preliminaries
   preliminariesCost: number;
 
-  // Sums
+  // Sums (cost-side only -- profit/subtotal/final price are computed per
+  // pricing scenario, see PricingScenario in utils/calculator.ts, since a
+  // single estimate can carry a Markup price, a Gross Return price, or both)
   totalCost: number;
-  profitAmount: number;
-  subtotal: number;
-  gstAmount: number;
-  finalPrice: number;
 
-  // Rates per m2
+  // Rate per m2 (cost-side only)
   costPerM2: number;
-  sellPricePerM2: number;
-  finalRatePerM2: number;
 }
 
 export interface SavedQuote {
@@ -132,18 +130,15 @@ export interface SavedQuote {
   execution: ExecutionData;
   travel: TravelData;
   meeting: EstimatorMeetingData;
-  profitMarginPercent: number;
-  marginMethod?: 'markup' | 'gross';
-  
-  // Stored outputs
+  markupPercent: number | null;
+  grossReturnPercent: number | null;
+
+  // Stored outputs (cost-side only -- Subtotal/GST/Final Price/rates for
+  // whichever pricing method(s) were set are derived on demand from
+  // totalCost + costPerM2 + totalFacadeArea via computeScenario())
   totalCost: number;
-  profitAmount: number;
-  subtotal: number;
-  finalPrice: number;
   totalFacadeArea: number;
   costPerM2: number;
-  sellPricePerM2: number;
-  finalRatePerM2: number;
   category: 'A' | 'B' | 'C';
   status: 'Quoted' | 'Won' | 'Lost' | 'In Progress';
 }

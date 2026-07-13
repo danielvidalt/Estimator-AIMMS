@@ -28,43 +28,60 @@ export function getPreliminariesCost(config: PricingConfig): number {
   return getPreliminariesBreakdown(config).total;
 }
 
-export interface ProfitScenarios {
-  subtotalMarkup: number;
-  finalPriceMarkup: number;
-  subtotalGross: number;
-  finalPriceGross: number;
+export type PricingMethod = 'markup' | 'gross';
+
+export interface PricingScenario {
+  method: PricingMethod;
+  percent: number;
+  profitAmount: number;
+  subtotal: number;
+  gstAmount: number;
+  finalPrice: number;
+  sellPricePerM2: number;
+  finalRatePerM2: number;
 }
 
-// Given a saved quote's totalCost and profitMarginPercent, work out what the
-// price would have been under BOTH profit models -- used by the History
-// table to show Markup vs Gross Return side by side, regardless of which
-// method was actually selected when the quote was saved.
-export function getProfitScenarios(totalCost: number, profitMarginPercent: number): ProfitScenarios {
-  const fraction = profitMarginPercent / 100;
+// Computes Subtotal/GST/Final Price/rates for ONE pricing method + %, given
+// the estimate's cost-side numbers. Markup applies the % on top of cost;
+// Gross Return applies it as a share of the final sale price instead. Used
+// both for the live "Active Estimate" panel and for the History table
+// (recomputed fresh from each saved quote's totalCost/percent, independent
+// of whichever method(s) were actually set when it was saved).
+export function computeScenario(
+  method: PricingMethod,
+  percent: number,
+  totalCost: number,
+  totalExecutionCost: number,
+  totalFacadeArea: number
+): PricingScenario {
+  const fraction = percent / 100;
 
-  const profitMarkup = totalCost * fraction;
-  const subtotalMarkup = totalCost + profitMarkup;
+  const profitAmount = method === 'gross'
+    ? (fraction >= 1 ? totalCost * 99 : (totalCost / (1 - fraction)) - totalCost)
+    : totalCost * fraction;
 
-  const profitGross = fraction >= 1 ? totalCost * 99 : (totalCost / (1 - fraction)) - totalCost;
-  const subtotalGross = totalCost + profitGross;
+  const subtotal = totalCost + profitAmount;
+  const gstAmount = subtotal * 0.10;
+  const finalPrice = subtotal + gstAmount;
 
-  return {
-    subtotalMarkup,
-    finalPriceMarkup: subtotalMarkup * 1.10,
-    subtotalGross,
-    finalPriceGross: subtotalGross * 1.10,
-  };
+  let sellPricePerM2 = 0;
+  if (totalFacadeArea > 0) {
+    sellPricePerM2 = method === 'gross'
+      ? (fraction >= 1 ? (totalExecutionCost + totalExecutionCost * 99) / totalFacadeArea : (totalExecutionCost / (1 - fraction)) / totalFacadeArea)
+      : (totalExecutionCost + totalExecutionCost * fraction) / totalFacadeArea;
+  }
+  const finalRatePerM2 = totalFacadeArea > 0 ? (finalPrice / totalFacadeArea) : 0;
+
+  return { method, percent, profitAmount, subtotal, gstAmount, finalPrice, sellPricePerM2, finalRatePerM2 };
 }
 
 export function calculateEstimate(inputs: EstimateInputs, config: PricingConfig): EstimateResults {
   const {
-    projectInfo,
     geometry,
     complexity,
     execution,
     travel,
     meeting,
-    profitMarginPercent,
   } = inputs;
 
   // 1. Calculate Facade Area
@@ -216,47 +233,9 @@ export function calculateEstimate(inputs: EstimateInputs, config: PricingConfig)
   // 7. Overall Sums
   const totalCost = preliminariesCost + totalExecutionCost + totalTravelCost + totalEstimatorCost + totalNfcTagsCost;
 
-  const profitMarginPercentFraction = profitMarginPercent / 100;
-
-  let profitAmount = 0;
-  if (inputs.marginMethod === 'gross') {
-    // Gross Return (Margin on Sales price)
-    // subtotal = totalCost / (1 - fraction)
-    // profit = subtotal - totalCost
-    if (profitMarginPercentFraction >= 1) {
-      profitAmount = totalCost * 99; // fail-safe for 100% margin
-    } else {
-      profitAmount = (totalCost / (1 - profitMarginPercentFraction)) - totalCost;
-    }
-  } else {
-    // Default: Markup on Cost
-    profitAmount = totalCost * profitMarginPercentFraction;
-  }
-
-  const subtotal = totalCost + profitAmount;
-  const gstAmount = subtotal * 0.10; // 10%
-  const finalPrice = subtotal + gstAmount;
-
-  // 8. Rates per m2
-  // Adjust Cost = Execution Cost (the variable cost of executing, without prelims or travel)
-  const adjustCost = totalExecutionCost;
-
-  const costPerM2 = totalFacadeArea > 0 ? (adjustCost / totalFacadeArea) : 0;
-
-  let sellPricePerM2 = 0;
-  if (totalFacadeArea > 0) {
-    if (inputs.marginMethod === 'gross') {
-      if (profitMarginPercentFraction >= 1) {
-        sellPricePerM2 = (adjustCost + (adjustCost * 99)) / totalFacadeArea;
-      } else {
-        sellPricePerM2 = (adjustCost / (1 - profitMarginPercentFraction)) / totalFacadeArea;
-      }
-    } else {
-      sellPricePerM2 = (adjustCost + (adjustCost * profitMarginPercentFraction)) / totalFacadeArea;
-    }
-  }
-
-  const finalRatePerM2 = totalFacadeArea > 0 ? (finalPrice / totalFacadeArea) : 0;
+  // 8. Rate per m2 (cost-side; sale-side rates depend on the pricing
+  // scenario -- see computeScenario())
+  const costPerM2 = totalFacadeArea > 0 ? (totalExecutionCost / totalFacadeArea) : 0;
 
   return {
     totalFacadeArea,
@@ -289,12 +268,6 @@ export function calculateEstimate(inputs: EstimateInputs, config: PricingConfig)
     totalEstimatorCost,
     preliminariesCost,
     totalCost,
-    profitAmount,
-    subtotal,
-    gstAmount,
-    finalPrice,
     costPerM2,
-    sellPricePerM2,
-    finalRatePerM2,
   };
 }

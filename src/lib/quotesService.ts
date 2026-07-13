@@ -11,16 +11,11 @@ interface QuoteRow {
   execution: SavedQuote['execution'];
   travel: SavedQuote['travel'];
   meeting: SavedQuote['meeting'];
-  profit_margin_percent: number;
-  margin_method: SavedQuote['marginMethod'] | null;
+  markup_percent: number | null;
+  gross_return_percent: number | null;
   total_cost: number;
-  profit_amount: number;
-  subtotal: number;
-  final_price: number;
   total_facade_area: number;
   cost_per_m2: number;
-  sell_price_per_m2: number;
-  final_rate_per_m2: number;
   category: SavedQuote['category'];
   status: SavedQuote['status'];
 }
@@ -36,16 +31,11 @@ function toRow(quote: SavedQuote): QuoteRow {
     execution: quote.execution,
     travel: quote.travel,
     meeting: quote.meeting,
-    profit_margin_percent: quote.profitMarginPercent,
-    margin_method: quote.marginMethod ?? null,
+    markup_percent: quote.markupPercent,
+    gross_return_percent: quote.grossReturnPercent,
     total_cost: quote.totalCost,
-    profit_amount: quote.profitAmount,
-    subtotal: quote.subtotal,
-    final_price: quote.finalPrice,
     total_facade_area: quote.totalFacadeArea,
     cost_per_m2: quote.costPerM2,
-    sell_price_per_m2: quote.sellPricePerM2,
-    final_rate_per_m2: quote.finalRatePerM2,
     category: quote.category,
     status: quote.status,
   };
@@ -62,16 +52,11 @@ function fromRow(row: QuoteRow): SavedQuote {
     execution: row.execution,
     travel: row.travel,
     meeting: row.meeting,
-    profitMarginPercent: row.profit_margin_percent,
-    marginMethod: row.margin_method ?? undefined,
+    markupPercent: row.markup_percent,
+    grossReturnPercent: row.gross_return_percent,
     totalCost: row.total_cost,
-    profitAmount: row.profit_amount,
-    subtotal: row.subtotal,
-    finalPrice: row.final_price,
     totalFacadeArea: row.total_facade_area,
     costPerM2: row.cost_per_m2,
-    sellPricePerM2: row.sell_price_per_m2,
-    finalRatePerM2: row.final_rate_per_m2,
     category: row.category,
     status: row.status,
   };

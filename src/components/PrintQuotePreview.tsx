@@ -1,5 +1,6 @@
 import React from 'react';
 import { EstimateInputs, EstimateResults } from '../types';
+import { PricingScenario } from '../utils/calculator';
 import { Logo } from './Logo';
 import { 
   X, 
@@ -21,6 +22,7 @@ interface PrintQuotePreviewProps {
   onClose: () => void;
   inputs: EstimateInputs;
   results: EstimateResults;
+  scenario: PricingScenario;
   quoteId: string;
 }
 
@@ -29,6 +31,7 @@ export default function PrintQuotePreview({
   onClose,
   inputs,
   results,
+  scenario,
   quoteId
 }: PrintQuotePreviewProps) {
   if (!isOpen) return null;
@@ -335,11 +338,11 @@ export default function PrintQuotePreview({
                   </div>
                   <div className="flex justify-between text-xs font-medium border-b border-dashed pb-1.5">
                     <span className="text-slate-550 text-slate-500">Sale Price / m² (Directs + Margin):</span>
-                    <span className="font-mono text-slate-800">${results.sellPricePerM2.toFixed(2)} AUD</span>
+                    <span className="font-mono text-slate-800">${scenario.sellPricePerM2.toFixed(2)} AUD</span>
                   </div>
                   <div className="flex justify-between text-xs font-bold pt-1 text-slate-900">
                     <span>Final Client Rate / m² (with GST):</span>
-                    <span className="font-mono font-semibold">${results.finalRatePerM2.toFixed(2)} AUD</span>
+                    <span className="font-mono font-semibold">${scenario.finalRatePerM2.toFixed(2)} AUD</span>
                   </div>
                 </div>
 
@@ -351,16 +354,16 @@ export default function PrintQuotePreview({
                       <span>${results.totalCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                     </div>
                     <div className="flex justify-between text-xs text-sky-100 font-mono">
-                      <span>Approved Profit ({inputs.profitMarginPercent}% {inputs.marginMethod === 'gross' ? 'Gross Return' : 'Markup'}):</span>
-                      <span>+${results.profitAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                      <span>Approved Profit ({scenario.percent}% {scenario.method === 'gross' ? 'Gross Return' : 'Markup'}):</span>
+                      <span>+${scenario.profitAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                     </div>
                     <div className="flex justify-between text-xs text-sky-100 font-mono border-b border-sky-800/80 pb-1.5">
                       <span>Subtotal (Net Price):</span>
-                      <span>${results.subtotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                      <span>${scenario.subtotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                     </div>
                     <div className="flex justify-between text-xs text-sky-100 font-mono">
                       <span>GST (10.0%):</span>
-                      <span>+${results.gstAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                      <span>+${scenario.gstAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                     </div>
                   </div>
 
@@ -369,7 +372,7 @@ export default function PrintQuotePreview({
                       TOTAL OFFERED PRICE
                     </span>
                     <span className="text-lg font-mono font-extrabold text-sky-300">
-                      ${results.finalPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      ${scenario.finalPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </span>
                   </div>
                 </div>

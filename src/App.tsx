@@ -34,7 +34,8 @@ import {
   ChevronRight,
   Settings,
   Lock,
-  ShieldCheck
+  ShieldCheck,
+  X
 } from 'lucide-react';
 
 import {
@@ -50,7 +51,7 @@ import {
   PRELIM_DETAILS_B
 } from './constants';
 import { EstimateInputs, SavedQuote, Segment, PricingConfig } from './types';
-import { calculateEstimate, getPreliminariesCost, getPreliminariesBreakdown, getProfitScenarios } from './utils/calculator';
+import { calculateEstimate, getPreliminariesCost, getPreliminariesBreakdown, computeScenario, PricingScenario } from './utils/calculator';
 import PreliminariesModal from './components/PreliminariesModal';
 import PrintQuotePreview from './components/PrintQuotePreview';
 import SettingsPanel from './components/SettingsPanel';
@@ -240,40 +241,31 @@ export default function App({ session }: AppProps) {
     if (customPrelims !== preliminariesDefault) {
       const diff = customPrelims - preliminariesDefault;
       const totalCost = baseCalculated.totalCost + diff;
-      
-      const marginFraction = inputs.profitMarginPercent / 100;
-      let profitAmount = 0;
-      if (inputs.marginMethod === 'gross') {
-        if (marginFraction >= 1) {
-          profitAmount = totalCost * 99;
-        } else {
-          profitAmount = (totalCost / (1 - marginFraction)) - totalCost;
-        }
-      } else {
-        profitAmount = totalCost * marginFraction;
-      }
-      
-      const subtotal = totalCost + profitAmount;
-      const gstAmount = subtotal * 0.10;
-      const finalPrice = subtotal + gstAmount;
-
-      // Rates adjusted
-      const finalRatePerM2 = baseCalculated.totalFacadeArea > 0 ? (finalPrice / baseCalculated.totalFacadeArea) : 0;
-
       return {
         ...baseCalculated,
         preliminariesCost: customPrelims,
         totalCost,
-        profitAmount,
-        subtotal,
-        gstAmount,
-        finalPrice,
-        finalRatePerM2,
       };
     }
-    
+
     return baseCalculated;
   }, [inputs, customPrelims, config, preliminariesDefault]);
+
+  // Independent Markup / Gross Return pricing scenarios -- either, both, or
+  // neither is active depending on what the user filled in. Both are
+  // derived fresh from the same cost-side results, so switching preliminary
+  // overrides or execution inputs keeps them in sync automatically.
+  const markupScenario: PricingScenario | null = useMemo(() => (
+    inputs.markupPercent != null
+      ? computeScenario('markup', inputs.markupPercent, results.totalCost, results.totalExecutionCost, results.totalFacadeArea)
+      : null
+  ), [inputs.markupPercent, results.totalCost, results.totalExecutionCost, results.totalFacadeArea]);
+
+  const grossScenario: PricingScenario | null = useMemo(() => (
+    inputs.grossReturnPercent != null
+      ? computeScenario('gross', inputs.grossReturnPercent, results.totalCost, results.totalExecutionCost, results.totalFacadeArea)
+      : null
+  ), [inputs.grossReturnPercent, results.totalCost, results.totalExecutionCost, results.totalFacadeArea]);
 
   // --- Actions & Handlers ---
   const triggerNotification = (message: string, type: 'success' | 'info' | 'error' = 'success') => {
@@ -430,6 +422,10 @@ export default function App({ session }: AppProps) {
       triggerNotification("Please enter a Project Name to save the quote.", "error");
       return;
     }
+    if (inputs.markupPercent == null && inputs.grossReturnPercent == null) {
+      triggerNotification("Please set a Markup % or Gross Return % before saving.", "error");
+      return;
+    }
 
     const todayStr = new Date().toISOString().split('T')[0];
     const monthStr = todayStr.substring(0, 7);
@@ -448,16 +444,11 @@ export default function App({ session }: AppProps) {
         execution: inputs.execution,
         travel: inputs.travel,
         meeting: inputs.meeting,
-        profitMarginPercent: inputs.profitMarginPercent,
-        marginMethod: inputs.marginMethod || 'markup',
+        markupPercent: inputs.markupPercent,
+        grossReturnPercent: inputs.grossReturnPercent,
         totalCost: results.totalCost,
-        profitAmount: results.profitAmount,
-        subtotal: results.subtotal,
-        finalPrice: results.finalPrice,
         totalFacadeArea: results.totalFacadeArea,
         costPerM2: results.costPerM2,
-        sellPricePerM2: results.sellPricePerM2,
-        finalRatePerM2: results.finalRatePerM2,
         category: results.category,
       };
       setHistory(prev => prev.map(q => (q.id === editingId ? updatedQuote : q)));
@@ -476,16 +467,11 @@ export default function App({ session }: AppProps) {
         execution: inputs.execution,
         travel: inputs.travel,
         meeting: inputs.meeting,
-        profitMarginPercent: inputs.profitMarginPercent,
-        marginMethod: inputs.marginMethod || 'markup',
+        markupPercent: inputs.markupPercent,
+        grossReturnPercent: inputs.grossReturnPercent,
         totalCost: results.totalCost,
-        profitAmount: results.profitAmount,
-        subtotal: results.subtotal,
-        finalPrice: results.finalPrice,
         totalFacadeArea: results.totalFacadeArea,
         costPerM2: results.costPerM2,
-        sellPricePerM2: results.sellPricePerM2,
-        finalRatePerM2: results.finalRatePerM2,
         category: results.category,
         status: 'Quoted',
       };
@@ -503,8 +489,8 @@ export default function App({ session }: AppProps) {
       execution: quote.execution,
       travel: quote.travel,
       meeting: quote.meeting,
-      profitMarginPercent: quote.profitMarginPercent,
-      marginMethod: quote.marginMethod || 'markup',
+      markupPercent: quote.markupPercent,
+      grossReturnPercent: quote.grossReturnPercent,
     });
     setEditingId(quote.id);
     setActiveTab('calculator');
@@ -1652,136 +1638,154 @@ export default function App({ session }: AppProps) {
 
                 {/* Section: Profit margin configuration & totals */}
                 <div className="p-6 border-b border-slate-100 bg-slate-50/50 space-y-4">
-                  
-                  {/* Option toggle for margin type */}
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
-                      Profit Calculation Model
-                    </label>
-                    <div className="grid grid-cols-2 gap-1.5 bg-slate-100 p-1 rounded-xl">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setInputs(prev => ({ ...prev, marginMethod: 'markup' }));
-                        }}
-                        className={`py-2 rounded-lg text-xs font-bold transition duration-200 cursor-pointer text-center ${
-                          (inputs.marginMethod || 'markup') === 'markup'
-                            ? 'bg-aimms-blue text-white shadow-xs animate-fade-in'
-                            : 'text-slate-500 hover:text-slate-900 font-semibold'
-                        }`}
-                      >
-                        Markup (on Cost)
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          // If current margin is 100, clamp it to 95 for Gross Return
-                          setInputs(prev => ({ 
-                            ...prev, 
-                            marginMethod: 'gross', 
-                            profitMarginPercent: Math.min(prev.profitMarginPercent, 95) 
-                          }));
-                        }}
-                        className={`py-2 rounded-lg text-xs font-bold transition duration-200 cursor-pointer text-center ${
-                          inputs.marginMethod === 'gross'
-                            ? 'bg-aimms-blue text-white shadow-xs animate-fade-in'
-                            : 'text-slate-500 hover:text-slate-900 font-semibold'
-                        }`}
-                      >
-                        Gross Return (on Sale)
-                      </button>
-                    </div>
-                  </div>
 
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-baseline">
-                      <label className="text-xs sm:text-sm font-extrabold text-slate-600 uppercase tracking-wide flex items-center gap-1.5">
-                        <Sliders className="w-4 h-4 text-aimms-blue" />
-                        Desired Profit Margin
-                      </label>
-                      <div className="flex items-center gap-1 font-mono text-sm font-bold bg-white px-2.5 py-1 rounded border">
+                  {/* Independent Markup / Gross Return inputs -- either, both, or neither */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                      <Sliders className="w-4 h-4 text-aimms-blue" />
+                      Profit Margin(s)
+                    </label>
+                    <p className="text-[11px] text-slate-400 leading-tight">
+                      Set either, both, or clear one to quote only the other method.
+                    </p>
+                    <div className="grid grid-cols-2 gap-3 pt-1">
+                      <div className="space-y-1">
+                        <div className="flex justify-between items-center">
+                          <span className="text-[11px] font-bold text-aimms-blue uppercase tracking-wide">Markup %</span>
+                          {inputs.markupPercent != null && (
+                            <button
+                              type="button"
+                              onClick={() => setInputs(prev => ({ ...prev, markupPercent: null }))}
+                              className="text-slate-300 hover:text-rose-500 cursor-pointer"
+                              title="Clear Markup %"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
                         <input
                           type="number"
-                          min="0"
-                          max={inputs.marginMethod === 'gross' ? 95 : 100}
-                          value={inputs.profitMarginPercent}
+                          min={0}
+                          max={100}
+                          placeholder="—"
+                          value={inputs.markupPercent ?? ''}
                           onChange={(e) => {
-                            const val = Math.max(0, parseInt(e.target.value) || 0);
-                            const maxAllowed = inputs.marginMethod === 'gross' ? 95 : 100;
-                            setInputs(prev => ({ ...prev, profitMarginPercent: Math.min(val, maxAllowed) }));
+                            const raw = e.target.value;
+                            setInputs(prev => ({
+                              ...prev,
+                              markupPercent: raw === '' ? null : Math.min(100, Math.max(0, parseInt(raw) || 0)),
+                            }));
                           }}
-                          className="w-10 text-right font-extrabold focus:outline-none"
+                          className="w-full px-2 py-2 border border-slate-200 rounded-lg text-center font-mono font-bold text-sm focus:outline-none focus:ring-2 focus:ring-aimms-blue/20 bg-white"
                         />
-                        <span className="text-slate-400">%</span>
+                      </div>
+                      <div className="space-y-1">
+                        <div className="flex justify-between items-center">
+                          <span className="text-[11px] font-bold text-emerald-700 uppercase tracking-wide">Gross Return %</span>
+                          {inputs.grossReturnPercent != null && (
+                            <button
+                              type="button"
+                              onClick={() => setInputs(prev => ({ ...prev, grossReturnPercent: null }))}
+                              className="text-slate-300 hover:text-rose-500 cursor-pointer"
+                              title="Clear Gross Return %"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                        <input
+                          type="number"
+                          min={0}
+                          max={95}
+                          placeholder="—"
+                          value={inputs.grossReturnPercent ?? ''}
+                          onChange={(e) => {
+                            const raw = e.target.value;
+                            setInputs(prev => ({
+                              ...prev,
+                              grossReturnPercent: raw === '' ? null : Math.min(95, Math.max(0, parseInt(raw) || 0)),
+                            }));
+                          }}
+                          className="w-full px-2 py-2 border border-slate-200 rounded-lg text-center font-mono font-bold text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600/20 bg-white"
+                        />
                       </div>
                     </div>
-                    {/* Range slider */}
-                    <input
-                      type="range"
-                      min="0"
-                      max={inputs.marginMethod === 'gross' ? 95 : 100}
-                      value={inputs.profitMarginPercent}
-                      onChange={(e) => setInputs(prev => ({ ...prev, profitMarginPercent: parseInt(e.target.value) || 0 }))}
-                      className="w-full h-1 bg-slate-200 rounded-lg accent-aimms-blue cursor-pointer"
-                    />
-                    {/* Fast Margin presets */}
-                    <div className="flex justify-between gap-1.5">
-                      {[10, 30, 40, 50, 60].map(pt => (
-                        <button
-                          key={pt}
-                          onClick={() => {
-                            const maxAllowed = inputs.marginMethod === 'gross' ? 95 : 100;
-                            setInputs(prev => ({ ...prev, profitMarginPercent: Math.min(pt, maxAllowed) }));
-                          }}
-                          className={`text-xs font-extrabold px-3 py-1.5 rounded-lg transition duration-150 cursor-pointer ${
-                            inputs.profitMarginPercent === pt
-                              ? 'bg-aimms-blue text-white shadow-xs'
-                              : 'bg-white hover:bg-slate-200 border border-slate-200 text-slate-700'
-                          }`}
-                        >
-                          {pt}%
-                        </button>
-                      ))}
-                    </div>
                   </div>
 
-                  <div className="space-y-1.5 text-xs sm:text-sm">
-                    <div className="flex justify-between text-slate-605 text-slate-600 font-medium font-mono">
-                      <span>Profit Margin Amount:</span>
-                      <span>+${results.profitAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  {markupScenario || grossScenario ? (
+                    <div className="space-y-2">
+                      {markupScenario && (
+                        <div className="rounded-xl border border-aimms-blue/20 bg-white p-3 space-y-1 text-xs">
+                          <div className="font-black text-aimms-blue uppercase tracking-wide text-[11px] pb-1 border-b border-aimms-blue/10">
+                            Markup ({markupScenario.percent}% on Cost)
+                          </div>
+                          <div className="flex justify-between text-slate-600 font-mono">
+                            <span>Profit:</span>
+                            <span>+${markupScenario.profitAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                          </div>
+                          <div className="flex justify-between text-slate-600 font-mono">
+                            <span>Subtotal:</span>
+                            <span>${markupScenario.subtotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                          </div>
+                          <div className="flex justify-between text-slate-600 font-mono">
+                            <span>GST (10%):</span>
+                            <span>+${markupScenario.gstAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                          </div>
+                        </div>
+                      )}
+                      {grossScenario && (
+                        <div className="rounded-xl border border-emerald-600/20 bg-white p-3 space-y-1 text-xs">
+                          <div className="font-black text-emerald-700 uppercase tracking-wide text-[11px] pb-1 border-b border-emerald-600/10">
+                            Gross Return ({grossScenario.percent}% on Sale)
+                          </div>
+                          <div className="flex justify-between text-slate-600 font-mono">
+                            <span>Profit:</span>
+                            <span>+${grossScenario.profitAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                          </div>
+                          <div className="flex justify-between text-slate-600 font-mono">
+                            <span>Subtotal:</span>
+                            <span>${grossScenario.subtotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                          </div>
+                          <div className="flex justify-between text-slate-600 font-mono">
+                            <span>GST (10%):</span>
+                            <span>+${grossScenario.gstAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    
-                    <div className="flex justify-between text-slate-400 font-mono text-[11px] leading-tight pb-0.5 border-b border-dotted border-slate-200">
-                      <span>Effective Markup (on Cost):</span>
-                      <span>{results.totalCost > 0 ? ((results.profitAmount / results.totalCost) * 100).toFixed(1) : '0.0'}%</span>
+                  ) : (
+                    <div className="text-xs text-slate-400 italic text-center py-3">
+                      Set a Markup % or Gross Return % to see pricing.
                     </div>
-                    <div className="flex justify-between text-slate-400 font-mono text-[11px] leading-tight pb-1.5">
-                      <span>Effective Gross Return:</span>
-                      <span className="text-aimms-blue font-bold">{results.subtotal > 0 ? ((results.profitAmount / results.subtotal) * 100).toFixed(1) : '0.0'}%</span>
-                    </div>
+                  )}
 
-                    <div className="flex justify-between text-slate-655 text-slate-600 font-bold border-b border-slate-200 pb-2">
-                      <span>Subtotal (Net Price):</span>
-                      <span>${results.subtotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  {/* HIGHLIGHTED TARGET COST CARD(S) */}
+                  {(markupScenario || grossScenario) && (
+                    <div className={`grid gap-3 ${markupScenario && grossScenario ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                      {markupScenario && (
+                        <div className="bg-aimms-blue text-white rounded-2xl p-4 shadow-lg border border-aimms-blue/30">
+                          <span className="text-[10px] text-sky-200 uppercase font-black tracking-wider block">
+                            Final Price (Markup)
+                          </span>
+                          <p className="text-[10px] text-sky-100/75 leading-tight mt-0.5 font-medium">GST incl.</p>
+                          <span className="text-xl font-mono font-black text-white block mt-1">
+                            ${markupScenario.finalPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                      )}
+                      {grossScenario && (
+                        <div className="bg-emerald-700 text-white rounded-2xl p-4 shadow-lg border border-emerald-700/30">
+                          <span className="text-[10px] text-emerald-100 uppercase font-black tracking-wider block">
+                            Final Price (Gross Return)
+                          </span>
+                          <p className="text-[10px] text-emerald-100/75 leading-tight mt-0.5 font-medium">GST incl.</p>
+                          <span className="text-xl font-mono font-black text-white block mt-1">
+                            ${grossScenario.finalPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                      )}
                     </div>
-                    <div className="flex justify-between text-slate-500 font-extrabold font-mono pt-1">
-                      <span>GST Tax (10.0%):</span>
-                      <span>+${results.gstAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                    </div>
-                  </div>
-
-                  {/* HIGHLIGHTED TARGET COST CARD */}
-                  <div className="bg-aimms-blue text-white rounded-2xl p-5 flex justify-between items-center shadow-lg border border-aimms-blue/30">
-                    <div>
-                      <span className="text-xs text-sky-200 uppercase font-black tracking-wider block">
-                        FINAL PRICE (GST INCL)
-                      </span>
-                      <p className="text-xs text-sky-100/75 leading-tight mt-0.5 font-medium">Valid for quote proposals</p>
-                    </div>
-                    <span className="text-2xl font-mono font-black text-white">
-                      ${results.finalPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </span>
-                  </div>
+                  )}
                 </div>
 
                 {/* Section: Rates and Square meters breakdown metrics */}
@@ -1799,14 +1803,30 @@ export default function App({ session }: AppProps) {
                         <span className="text-slate-550 text-slate-500">Cost Rate / m²:</span>
                         <strong className="font-mono text-slate-800">${results.costPerM2.toFixed(2)} AUD/m²</strong>
                       </div>
-                      <div className="flex justify-between font-semibold">
-                        <span className="text-slate-550 text-slate-500">Sale Rate / m²:</span>
-                        <strong className="font-mono text-slate-800">${results.sellPricePerM2.toFixed(2)} AUD/m²</strong>
-                      </div>
-                      <div className="flex justify-between font-bold border-t border-slate-100 pt-2 text-slate-900 text-sm">
-                        <span>Final Rate / m² (with GST):</span>
-                        <strong className="font-mono">${results.finalRatePerM2.toFixed(2)} AUD/m²</strong>
-                      </div>
+                      {markupScenario && (
+                        <div className="flex justify-between font-semibold">
+                          <span className="text-slate-550 text-slate-500">Sale Rate / m² (Markup):</span>
+                          <strong className="font-mono text-slate-800">${markupScenario.sellPricePerM2.toFixed(2)} AUD/m²</strong>
+                        </div>
+                      )}
+                      {grossScenario && (
+                        <div className="flex justify-between font-semibold">
+                          <span className="text-slate-550 text-slate-500">Sale Rate / m² (Gross Return):</span>
+                          <strong className="font-mono text-slate-800">${grossScenario.sellPricePerM2.toFixed(2)} AUD/m²</strong>
+                        </div>
+                      )}
+                      {markupScenario && (
+                        <div className="flex justify-between font-bold border-t border-slate-100 pt-2 text-slate-900 text-sm">
+                          <span>Final Rate / m² (Markup, GST incl):</span>
+                          <strong className="font-mono">${markupScenario.finalRatePerM2.toFixed(2)} AUD/m²</strong>
+                        </div>
+                      )}
+                      {grossScenario && (
+                        <div className="flex justify-between font-bold border-t border-slate-100 pt-2 text-slate-900 text-sm">
+                          <span>Final Rate / m² (Gross Return, GST incl):</span>
+                          <strong className="font-mono">${grossScenario.finalRatePerM2.toFixed(2)} AUD/m²</strong>
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <div className="text-xs sm:text-sm text-slate-400 py-1 italic block text-center">
@@ -1828,6 +1848,10 @@ export default function App({ session }: AppProps) {
                     onClick={() => {
                       if (results.totalFacadeArea <= 0) {
                         triggerNotification("Please enter geometry values before launching printable preview.", "error");
+                        return;
+                      }
+                      if (!markupScenario && !grossScenario) {
+                        triggerNotification("Please set a Markup % or Gross Return % before exporting.", "error");
                         return;
                       }
                       setIsPrintModalOpen(true);
@@ -1889,39 +1913,39 @@ export default function App({ session }: AppProps) {
                         <span className="cursor-help">Markup %</span>
                         <FieldTooltip
                           align="left"
-                          text="Target profit margin entered on this quote, applied on top of cost (Markup on Cost method)."
+                          text="Markup % entered on this quote, applied on top of cost. Shows — if this method wasn't used for this quote."
                         />
                       </th>
                       <th className="p-3 text-right relative group/tip">
                         <span className="cursor-help">Gross Return %</span>
                         <FieldTooltip
                           align="left"
-                          text="Same margin % as Markup, but applied as a share of the final sale price (Gross Return method) instead of on top of cost. The $ columns to the right show how the two methods produce different prices from the same %."
+                          text="Gross Return % entered on this quote, applied as a share of the final sale price instead of on top of cost. Independent from Markup % -- shows — if this method wasn't used for this quote."
                         />
                       </th>
                       <th className="p-3 text-right relative group/tip">
                         <span className="cursor-help">Subtotal (Markup)</span>
                         <FieldTooltip
-                          text="Net price before GST if the Markup on Cost method is used: Total Cost + (Total Cost x Markup %)."
+                          text="Net price before GST using this quote's Markup %: Total Cost + (Total Cost x Markup %). Shows — if no Markup % was set."
                         />
                       </th>
                       <th className="p-3 text-right relative group/tip">
                         <span className="cursor-help">Subtotal (Gross)</span>
                         <FieldTooltip
-                          text="Net price before GST if the Gross Return method is used, so the margin % lands on the final sale price instead of on cost. Always higher than Subtotal (Markup) for the same %."
+                          text="Net price before GST using this quote's Gross Return %, so the margin % lands on the final sale price instead of on cost. Shows — if no Gross Return % was set."
                         />
                       </th>
                       <th className="p-3 text-right relative group/tip">
                         <span className="cursor-help">Final Price (Markup)</span>
                         <FieldTooltip
-                          text="Subtotal (Markup) plus 10% GST -- the sell price if quoted using the Markup on Cost method."
+                          text="Subtotal (Markup) plus 10% GST. Shows — if no Markup % was set on this quote."
                         />
                       </th>
                       <th className="p-3 text-right relative group/tip">
                         <span className="cursor-help">Final Price (Gross)</span>
                         <FieldTooltip
                           align="right"
-                          text="Subtotal (Gross) plus 10% GST -- the sell price if quoted using the Gross Return method."
+                          text="Subtotal (Gross) plus 10% GST. Shows — if no Gross Return % was set on this quote."
                         />
                       </th>
                       <th className="p-3 text-center">Category</th>
@@ -1932,7 +1956,12 @@ export default function App({ session }: AppProps) {
                   <tbody className="divide-y divide-slate-100">
                     {history.map(quote => {
                       const quoteCat = CATEGORY_RULES.find(r => quote.category === r.category) || CATEGORY_RULES[2];
-                      const scenarios = getProfitScenarios(quote.totalCost, quote.profitMarginPercent);
+                      const quoteMarkup = quote.markupPercent != null
+                        ? computeScenario('markup', quote.markupPercent, quote.totalCost, 0, quote.totalFacadeArea)
+                        : null;
+                      const quoteGross = quote.grossReturnPercent != null
+                        ? computeScenario('gross', quote.grossReturnPercent, quote.totalCost, 0, quote.totalFacadeArea)
+                        : null;
                       return (
                         <tr key={quote.id} className="hover:bg-slate-50/80 transition">
                           
@@ -1965,32 +1994,32 @@ export default function App({ session }: AppProps) {
 
                           {/* Markup % */}
                           <td className="p-3 text-right font-mono text-slate-600">
-                            {quote.profitMarginPercent}%
+                            {quote.markupPercent != null ? `${quote.markupPercent}%` : <span className="text-slate-300">—</span>}
                           </td>
 
-                          {/* Gross Return % (same input %, applied via the other method) */}
+                          {/* Gross Return % */}
                           <td className="p-3 text-right font-mono text-slate-600">
-                            {quote.profitMarginPercent}%
+                            {quote.grossReturnPercent != null ? `${quote.grossReturnPercent}%` : <span className="text-slate-300">—</span>}
                           </td>
 
                           {/* Subtotal (Markup) */}
                           <td className="p-3 text-right font-mono text-slate-600">
-                            ${scenarios.subtotalMarkup.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            {quoteMarkup ? `$${quoteMarkup.subtotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : <span className="text-slate-300">—</span>}
                           </td>
 
                           {/* Subtotal (Gross Return) */}
                           <td className="p-3 text-right font-mono text-slate-600">
-                            ${scenarios.subtotalGross.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            {quoteGross ? `$${quoteGross.subtotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : <span className="text-slate-300">—</span>}
                           </td>
 
                           {/* Final Price (Markup) */}
                           <td className="p-3 text-right font-mono font-black text-slate-950 text-sm">
-                            ${scenarios.finalPriceMarkup.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            {quoteMarkup ? `$${quoteMarkup.finalPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : <span className="text-slate-300">—</span>}
                           </td>
 
                           {/* Final Price (Gross Return) */}
                           <td className="p-3 text-right font-mono font-black text-slate-950 text-sm">
-                            ${scenarios.finalPriceGross.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            {quoteGross ? `$${quoteGross.finalPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : <span className="text-slate-300">—</span>}
                           </td>
 
                           {/* Category Badge */}
@@ -2098,13 +2127,16 @@ export default function App({ session }: AppProps) {
         totalB={prelimBreakdown.totalB}
       />
 
-      <PrintQuotePreview
-        isOpen={isPrintModalOpen}
-        onClose={() => setIsPrintModalOpen(false)}
-        inputs={inputs}
-        results={results}
-        quoteId={editingId || `draft-${Date.now()}`}
-      />
+      {(markupScenario || grossScenario) && (
+        <PrintQuotePreview
+          isOpen={isPrintModalOpen}
+          onClose={() => setIsPrintModalOpen(false)}
+          inputs={inputs}
+          results={results}
+          scenario={(markupScenario ?? grossScenario)!}
+          quoteId={editingId || `draft-${Date.now()}`}
+        />
+      )}
 
     </div>
   );
