@@ -50,7 +50,7 @@ import {
   PRELIM_DETAILS_B
 } from './constants';
 import { EstimateInputs, SavedQuote, Segment, PricingConfig } from './types';
-import { calculateEstimate, getPreliminariesCost, getPreliminariesBreakdown } from './utils/calculator';
+import { calculateEstimate, getPreliminariesCost, getPreliminariesBreakdown, getProfitScenarios } from './utils/calculator';
 import PreliminariesModal from './components/PreliminariesModal';
 import PrintQuotePreview from './components/PrintQuotePreview';
 import SettingsPanel from './components/SettingsPanel';
@@ -1885,9 +1885,45 @@ export default function App({ session }: AppProps) {
                       <th className="p-3">State</th>
                       <th className="p-3 text-right">Total Area</th>
                       <th className="p-3 text-right">Raw Cost</th>
-                      <th className="p-3 text-right">Markup %</th>
-                      <th className="p-3 text-right">Subtotal</th>
-                      <th className="p-3 text-right">Final Price (GST)</th>
+                      <th className="p-3 text-right relative group/tip">
+                        <span className="cursor-help">Markup %</span>
+                        <FieldTooltip
+                          align="left"
+                          text="Target profit margin entered on this quote, applied on top of cost (Markup on Cost method)."
+                        />
+                      </th>
+                      <th className="p-3 text-right relative group/tip">
+                        <span className="cursor-help">Gross Return %</span>
+                        <FieldTooltip
+                          align="left"
+                          text="Same margin % as Markup, but applied as a share of the final sale price (Gross Return method) instead of on top of cost. The $ columns to the right show how the two methods produce different prices from the same %."
+                        />
+                      </th>
+                      <th className="p-3 text-right relative group/tip">
+                        <span className="cursor-help">Subtotal (Markup)</span>
+                        <FieldTooltip
+                          text="Net price before GST if the Markup on Cost method is used: Total Cost + (Total Cost x Markup %)."
+                        />
+                      </th>
+                      <th className="p-3 text-right relative group/tip">
+                        <span className="cursor-help">Subtotal (Gross)</span>
+                        <FieldTooltip
+                          text="Net price before GST if the Gross Return method is used, so the margin % lands on the final sale price instead of on cost. Always higher than Subtotal (Markup) for the same %."
+                        />
+                      </th>
+                      <th className="p-3 text-right relative group/tip">
+                        <span className="cursor-help">Final Price (Markup)</span>
+                        <FieldTooltip
+                          text="Subtotal (Markup) plus 10% GST -- the sell price if quoted using the Markup on Cost method."
+                        />
+                      </th>
+                      <th className="p-3 text-right relative group/tip">
+                        <span className="cursor-help">Final Price (Gross)</span>
+                        <FieldTooltip
+                          align="right"
+                          text="Subtotal (Gross) plus 10% GST -- the sell price if quoted using the Gross Return method."
+                        />
+                      </th>
                       <th className="p-3 text-center">Category</th>
                       <th className="p-3 text-center">Status</th>
                       <th className="p-3 text-center pr-4">Actions</th>
@@ -1896,6 +1932,7 @@ export default function App({ session }: AppProps) {
                   <tbody className="divide-y divide-slate-100">
                     {history.map(quote => {
                       const quoteCat = CATEGORY_RULES.find(r => quote.category === r.category) || CATEGORY_RULES[2];
+                      const scenarios = getProfitScenarios(quote.totalCost, quote.profitMarginPercent);
                       return (
                         <tr key={quote.id} className="hover:bg-slate-50/80 transition">
                           
@@ -1926,19 +1963,34 @@ export default function App({ session }: AppProps) {
                             ${quote.totalCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </td>
 
-                          {/* Profit margin */}
+                          {/* Markup % */}
                           <td className="p-3 text-right font-mono text-slate-600">
                             {quote.profitMarginPercent}%
                           </td>
 
-                          {/* Subtotal */}
+                          {/* Gross Return % (same input %, applied via the other method) */}
                           <td className="p-3 text-right font-mono text-slate-600">
-                            ${quote.subtotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            {quote.profitMarginPercent}%
                           </td>
 
-                          {/* Final Price */}
+                          {/* Subtotal (Markup) */}
+                          <td className="p-3 text-right font-mono text-slate-600">
+                            ${scenarios.subtotalMarkup.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </td>
+
+                          {/* Subtotal (Gross Return) */}
+                          <td className="p-3 text-right font-mono text-slate-600">
+                            ${scenarios.subtotalGross.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </td>
+
+                          {/* Final Price (Markup) */}
                           <td className="p-3 text-right font-mono font-black text-slate-950 text-sm">
-                            ${quote.finalPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            ${scenarios.finalPriceMarkup.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </td>
+
+                          {/* Final Price (Gross Return) */}
+                          <td className="p-3 text-right font-mono font-black text-slate-950 text-sm">
+                            ${scenarios.finalPriceGross.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </td>
 
                           {/* Category Badge */}

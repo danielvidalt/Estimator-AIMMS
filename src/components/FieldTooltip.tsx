@@ -24,7 +24,7 @@ export const FieldTooltip: React.FC<FieldTooltipProps> = ({ text, align = 'cente
   return (
     <div
       role="tooltip"
-      className={`pointer-events-none absolute z-30 top-full ${ALIGN_CLASSES[align]} mt-2 w-60 max-w-[70vw] rounded-xl bg-slate-900 text-white text-[11px] leading-relaxed font-medium p-3 opacity-0 scale-95 origin-top group-hover/tip:opacity-100 group-hover/tip:scale-100 transition-all duration-150 shadow-xl`}
+      className={`pointer-events-none absolute z-30 top-full ${ALIGN_CLASSES[align]} mt-2 w-60 max-w-[70vw] whitespace-normal rounded-xl bg-slate-900 text-white text-[11px] leading-relaxed font-medium p-3 opacity-0 scale-95 origin-top group-hover/tip:opacity-100 group-hover/tip:scale-100 transition-all duration-150 shadow-xl`}
     >
       {text}
       <div className={`absolute bottom-full ${ARROW_ALIGN_CLASSES[align]} w-2 h-2 bg-slate-900 rotate-45 -mb-1`} />

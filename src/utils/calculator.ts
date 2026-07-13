@@ -28,6 +28,34 @@ export function getPreliminariesCost(config: PricingConfig): number {
   return getPreliminariesBreakdown(config).total;
 }
 
+export interface ProfitScenarios {
+  subtotalMarkup: number;
+  finalPriceMarkup: number;
+  subtotalGross: number;
+  finalPriceGross: number;
+}
+
+// Given a saved quote's totalCost and profitMarginPercent, work out what the
+// price would have been under BOTH profit models -- used by the History
+// table to show Markup vs Gross Return side by side, regardless of which
+// method was actually selected when the quote was saved.
+export function getProfitScenarios(totalCost: number, profitMarginPercent: number): ProfitScenarios {
+  const fraction = profitMarginPercent / 100;
+
+  const profitMarkup = totalCost * fraction;
+  const subtotalMarkup = totalCost + profitMarkup;
+
+  const profitGross = fraction >= 1 ? totalCost * 99 : (totalCost / (1 - fraction)) - totalCost;
+  const subtotalGross = totalCost + profitGross;
+
+  return {
+    subtotalMarkup,
+    finalPriceMarkup: subtotalMarkup * 1.10,
+    subtotalGross,
+    finalPriceGross: subtotalGross * 1.10,
+  };
+}
+
 export function calculateEstimate(inputs: EstimateInputs, config: PricingConfig): EstimateResults {
   const {
     projectInfo,
