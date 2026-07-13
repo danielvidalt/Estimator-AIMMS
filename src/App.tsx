@@ -53,6 +53,7 @@ import PreliminariesModal from './components/PreliminariesModal';
 import PrintQuotePreview from './components/PrintQuotePreview';
 import SettingsPanel from './components/SettingsPanel';
 import { Logo } from './components/Logo';
+import { FieldTooltip } from './components/FieldTooltip';
 import { fetchQuotes, upsertQuote, upsertQuotes, deleteQuote } from './lib/quotesService';
 import { fetchAppState, saveAppState } from './lib/appStateService';
 import { fetchPricingConfig, savePricingConfig } from './lib/pricingConfigService';
@@ -1096,7 +1097,11 @@ export default function App({ session }: AppProps) {
                 </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-6 gap-3.5">
-                  <div className="space-y-1.5 bg-slate-50/50 p-2.5 rounded-xl border border-slate-100 hover:border-slate-200 transition">
+                  <div className="relative group/tip space-y-1.5 bg-slate-50/50 p-2.5 rounded-xl border border-slate-100 hover:border-slate-200 transition">
+                    <FieldTooltip
+                      align="left"
+                      text="Días que dura la inspección (rope access). Este ítem no considera el vuelo de dron como inspección."
+                    />
                     <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
                       Inspection Days
                     </label>
@@ -1109,7 +1114,10 @@ export default function App({ session }: AppProps) {
                     />
                   </div>
 
-                  <div className="space-y-1.5 bg-slate-50/50 p-2.5 rounded-xl border border-slate-100 hover:border-slate-200 transition">
+                  <div className="relative group/tip space-y-1.5 bg-slate-50/50 p-2.5 rounded-xl border border-slate-100 hover:border-slate-200 transition">
+                    <FieldTooltip
+                      text="Número de personas que conforman el equipo de facade technicians (rope access). Por lo general, un mínimo de 2 personas."
+                    />
                     <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
                       Team Size
                     </label>
@@ -1122,7 +1130,10 @@ export default function App({ session }: AppProps) {
                     />
                   </div>
 
-                  <div className="space-y-1.5 bg-slate-50/50 p-2.5 rounded-xl border border-slate-100 hover:border-slate-200 transition">
+                  <div className="relative group/tip space-y-1.5 bg-slate-50/50 p-2.5 rounded-xl border border-slate-100 hover:border-slate-200 transition">
+                    <FieldTooltip
+                      text="Días que dura la instalación de los NFC tags en el edificio. Depende de si se instala solo uno por drop (rooftop) o uno por sector/cuadrante (ej. L1/D1, L5/D2), y de si se instala en las 4 fachadas o solo en algunas."
+                    />
                     <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
                       NFC Inst. Days
                     </label>
@@ -1135,7 +1146,10 @@ export default function App({ session }: AppProps) {
                     />
                   </div>
 
-                  <div className="space-y-1.5 bg-slate-50/50 p-2.5 rounded-xl border border-slate-100 hover:border-slate-200 transition">
+                  <div className="relative group/tip space-y-1.5 bg-slate-50/50 p-2.5 rounded-xl border border-slate-100 hover:border-slate-200 transition">
+                    <FieldTooltip
+                      text="Ubicación de los NFC tags: si es en el edificio completo o solo en alguna fachada en particular. Define la cantidad de tags a instalar, lo que se refleja en el costo."
+                    />
                     <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
                       NFC Facades
                     </label>
@@ -1148,7 +1162,10 @@ export default function App({ session }: AppProps) {
                     />
                   </div>
 
-                  <div className="space-y-1.5 bg-slate-50/50 p-2.5 rounded-xl border border-slate-100 hover:border-slate-200 transition">
+                  <div className="relative group/tip space-y-1.5 bg-slate-50/50 p-2.5 rounded-xl border border-slate-100 hover:border-slate-200 transition">
+                    <FieldTooltip
+                      text="Días que toma marcar todos los defectos encontrados en la inspección sobre el modelo 3D. Por lo general varía entre 2 y 4 días laborales según la cantidad de defectos."
+                    />
                     <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
                       3D model (days)
                     </label>
@@ -1161,7 +1178,11 @@ export default function App({ session }: AppProps) {
                     />
                   </div>
 
-                  <div className="space-y-1.5 bg-slate-50/50 p-2.5 rounded-xl border border-slate-100 hover:border-slate-200 transition">
+                  <div className="relative group/tip space-y-1.5 bg-slate-50/50 p-2.5 rounded-xl border border-slate-100 hover:border-slate-200 transition">
+                    <FieldTooltip
+                      align="right"
+                      text="Días que se toman para armar el facade remedial report."
+                    />
                     <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">
                       Report Days
                     </label>
