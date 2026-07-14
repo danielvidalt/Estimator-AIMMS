@@ -1881,23 +1881,6 @@ export default function App({ session }: AppProps) {
                   <p className="text-xs text-slate-500">Stored estimates database (Quoted, Won, Lost, In Progress)</p>
                 </div>
               </div>
-
-              {/* Reset to defaults helper */}
-              <button
-                onClick={() => {
-                  if (confirm("Restore original seed project examples to history? This will merge them if missing.")) {
-                    const seedIds = INITIAL_HISTORY.map(q => q.id);
-                    const filtered = history.filter(q => !seedIds.includes(q.id));
-                    setHistory([...filtered, ...INITIAL_HISTORY]);
-                    upsertQuotes(INITIAL_HISTORY).catch(reportSupabaseError);
-                    triggerNotification("Seeded history rows restored successfully!");
-                  }
-                }}
-                className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-1.5 px-3 rounded-xl text-xs flex items-center gap-1 transition"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                Reload Seed Templates
-              </button>
             </div>
 
             {history.length > 0 ? (
