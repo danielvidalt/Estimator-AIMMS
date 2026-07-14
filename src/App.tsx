@@ -2072,22 +2072,8 @@ export default function App({ session }: AppProps) {
               </div>
             )}
           </div>
-        ) : isAdmin ? (
-          <SettingsPanel config={config} onSave={handleSaveConfig} />
         ) : (
-          <div className="bg-white rounded-3xl border border-slate-200/80 shadow-md p-12 text-center space-y-4 max-w-lg mx-auto">
-            <Lock className="w-8 h-8 mx-auto text-slate-300" />
-            <h2 className="text-lg font-display font-black text-slate-900">Admin access required</h2>
-            <p className="text-sm text-slate-500">
-              Pricing engine settings can only be changed by the admin account.
-            </p>
-            <button
-              onClick={() => setIsAdminModalOpen(true)}
-              className="bg-aimms-blue text-white font-bold py-2.5 px-5 rounded-xl hover:opacity-90 transition cursor-pointer"
-            >
-              Sign in as Admin
-            </button>
-          </div>
+          <SettingsPanel config={config} onSave={handleSaveConfig} readOnly={!isAdmin} />
         )}
 
       </main>

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Save, RefreshCw, Settings, AlertTriangle } from 'lucide-react';
+import { Save, RefreshCw, Settings, AlertTriangle, Eye } from 'lucide-react';
 import {
   FLOORS_FACTORS,
   AREA_FACTORS,
@@ -18,6 +18,7 @@ import { getPreliminariesBreakdown } from '../utils/calculator';
 interface SettingsPanelProps {
   config: PricingConfig;
   onSave: (next: PricingConfig) => void;
+  readOnly?: boolean;
 }
 
 function Section({ title, index, children }: { title: string; index: string; children: React.ReactNode }) {
@@ -78,7 +79,7 @@ function NumField({
         step={step}
         value={value}
         onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
-        className={`w-28 bg-white border border-slate-200 rounded-lg py-1.5 text-sm text-slate-800 font-mono text-right focus:outline-none focus:ring-2 focus:ring-aimms-blue/20 ${
+        className={`w-28 bg-white border border-slate-200 rounded-lg py-1.5 text-sm text-slate-800 font-mono text-right focus:outline-none focus:ring-2 focus:ring-aimms-blue/20 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed ${
           prefix ? 'pl-6 pr-2' : 'px-2'
         } ${suffix ? 'pr-6' : ''}`}
       />
@@ -95,7 +96,7 @@ function NoLimitBadge() {
   );
 }
 
-export default function SettingsPanel({ config, onSave }: SettingsPanelProps) {
+export default function SettingsPanel({ config, onSave, readOnly = false }: SettingsPanelProps) {
   const [buffer, setBuffer] = useState<PricingConfig>(config);
 
   useEffect(() => {
@@ -139,28 +140,38 @@ export default function SettingsPanel({ config, onSave }: SettingsPanelProps) {
           <div>
             <h1 className="text-base font-display font-black">Pricing Engine Settings</h1>
             <p className="text-xs text-slate-350 mt-0.5">
-              IDs and labels stay fixed; only the numbers ($ and factors) are editable. Changes apply to every
-              estimate as soon as you save.
+              {readOnly
+                ? 'View only. Sign in as admin to edit these numbers.'
+                : 'IDs and labels stay fixed; only the numbers ($ and factors) are editable. Changes apply to every estimate as soon as you save.'}
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <button
-            onClick={() => setBuffer(DEFAULT_PRICING_CONFIG)}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-slate-300 hover:text-white hover:bg-slate-800 transition cursor-pointer"
-          >
-            <RefreshCw className="w-3.5 h-3.5" />
-            Reset to factory defaults
-          </button>
-          <button
-            onClick={() => onSave(buffer)}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-aimms-blue text-white hover:opacity-90 transition cursor-pointer"
-          >
-            <Save className="w-3.5 h-3.5" />
-            Save changes
-          </button>
-        </div>
+        {readOnly ? (
+          <span className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-slate-300 bg-slate-800/60 shrink-0">
+            <Eye className="w-3.5 h-3.5" />
+            View only
+          </span>
+        ) : (
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => setBuffer(DEFAULT_PRICING_CONFIG)}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-slate-300 hover:text-white hover:bg-slate-800 transition cursor-pointer"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              Reset to factory defaults
+            </button>
+            <button
+              onClick={() => onSave(buffer)}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-aimms-blue text-white hover:opacity-90 transition cursor-pointer"
+            >
+              <Save className="w-3.5 h-3.5" />
+              Save changes
+            </button>
+          </div>
+        )}
       </div>
+
+      <fieldset disabled={readOnly} className="contents">
 
       <Section title="Floors Factor" index="01">
         {FLOORS_FACTORS.map((row, idx) => (
@@ -356,6 +367,8 @@ export default function SettingsPanel({ config, onSave }: SettingsPanelProps) {
           <span className="font-mono">${breakdown.totalB.toFixed(2)}</span>
         </div>
       </Section>
+
+      </fieldset>
 
       <div className="lg:col-span-2 bg-aimms-blue/5 border border-aimms-blue/20 rounded-3xl p-5 flex items-center justify-between">
         <div>
