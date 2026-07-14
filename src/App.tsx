@@ -609,7 +609,7 @@ export default function App({ session }: AppProps) {
               }`}
             >
               <Sliders className="w-4 h-4" />
-              <span>Active Estimate</span>
+              <span>Calculator</span>
             </button>
             <button
               onClick={() => setActiveTab('history')}

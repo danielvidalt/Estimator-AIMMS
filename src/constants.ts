@@ -107,14 +107,11 @@ export const DEFAULT_INPUTS: EstimateInputs = {
     state: "NSW",
   },
   geometry: {
-    numFloors: 10,
-    buildingHeight: 30,
-    buildingPerimeter: 120,
+    numFloors: 0,
+    buildingHeight: 0,
+    buildingPerimeter: 0,
     useSegments: false,
-    segments: [
-      { id: "seg-1", perimeter: 40, height: 30, area: 1200 },
-      { id: "seg-2", perimeter: 40, height: 30, area: 1200 },
-    ],
+    segments: [],
     directFacadeArea: 0,
   },
   complexity: {
@@ -125,12 +122,12 @@ export const DEFAULT_INPUTS: EstimateInputs = {
     locationId: "nsw",
   },
   execution: {
-    inspectionDays: 5,
-    teamSize: 2,
-    nfcDays: 2,
-    nfcFacadeCount: 1,
-    tagging3dDays: 2,
-    reportDays: 3,
+    inspectionDays: 0,
+    teamSize: 0,
+    nfcDays: 0,
+    nfcFacadeCount: 0,
+    tagging3dDays: 0,
+    reportDays: 0,
     dronePilotType: "internal",
   },
   travel: {
