@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Save, RefreshCw, Settings, AlertTriangle, Eye } from 'lucide-react';
+import { Save, RefreshCw, Settings, AlertTriangle, Eye, Pencil, X } from 'lucide-react';
 import {
   FLOORS_FACTORS,
   AREA_FACTORS,
@@ -98,10 +98,25 @@ function NoLimitBadge() {
 
 export default function SettingsPanel({ config, onSave, readOnly = false }: SettingsPanelProps) {
   const [buffer, setBuffer] = useState<PricingConfig>(config);
+  const [isEditing, setIsEditing] = useState(false);
 
   useEffect(() => {
     setBuffer(config);
   }, [config]);
+
+  // Admins start in the same locked/view state as everyone else; "Edit"
+  // unlocks the fields, and saving re-locks them automatically.
+  const locked = readOnly || !isEditing;
+
+  const handleSave = () => {
+    onSave(buffer);
+    setIsEditing(false);
+  };
+
+  const handleCancel = () => {
+    setBuffer(config);
+    setIsEditing(false);
+  };
 
   const setArrayValue = (key: keyof PricingConfig, idx: number, value: number) => {
     setBuffer(prev => {
@@ -142,7 +157,9 @@ export default function SettingsPanel({ config, onSave, readOnly = false }: Sett
             <p className="text-xs text-slate-350 mt-0.5">
               {readOnly
                 ? 'View only. Sign in as admin to edit these numbers.'
-                : 'IDs and labels stay fixed; only the numbers ($ and factors) are editable. Changes apply to every estimate as soon as you save.'}
+                : isEditing
+                  ? 'IDs and labels stay fixed; only the numbers ($ and factors) are editable. Changes apply to every estimate as soon as you save.'
+                  : 'View only. Click Edit to make changes.'}
             </p>
           </div>
         </div>
@@ -151,18 +168,33 @@ export default function SettingsPanel({ config, onSave, readOnly = false }: Sett
             <Eye className="w-3.5 h-3.5" />
             View only
           </span>
+        ) : !isEditing ? (
+          <button
+            onClick={() => setIsEditing(true)}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-aimms-blue text-white hover:opacity-90 active:scale-95 transition cursor-pointer shrink-0"
+          >
+            <Pencil className="w-3.5 h-3.5" />
+            Edit
+          </button>
         ) : (
           <div className="flex items-center gap-2 shrink-0">
             <button
+              onClick={handleCancel}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-slate-300 hover:text-white active:scale-95 hover:bg-slate-800 transition cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5" />
+              Cancel
+            </button>
+            <button
               onClick={() => setBuffer(DEFAULT_PRICING_CONFIG)}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-slate-300 hover:text-white hover:bg-slate-800 transition cursor-pointer"
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-slate-300 hover:text-white active:scale-95 hover:bg-slate-800 transition cursor-pointer"
             >
               <RefreshCw className="w-3.5 h-3.5" />
               Reset to factory defaults
             </button>
             <button
-              onClick={() => onSave(buffer)}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-aimms-blue text-white hover:opacity-90 transition cursor-pointer"
+              onClick={handleSave}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-aimms-blue text-white hover:opacity-90 active:scale-95 transition cursor-pointer"
             >
               <Save className="w-3.5 h-3.5" />
               Save changes
@@ -171,7 +203,7 @@ export default function SettingsPanel({ config, onSave, readOnly = false }: Sett
         )}
       </div>
 
-      <fieldset disabled={readOnly} className="contents">
+      <fieldset disabled={locked} className="contents">
 
       <Section title="Floors Factor" index="01">
         {FLOORS_FACTORS.map((row, idx) => (
