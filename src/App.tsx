@@ -660,9 +660,10 @@ export default function App({ session }: AppProps) {
               <button
                 onClick={() => setIsAdminModalOpen(true)}
                 title="Admin sign in"
-                className="text-slate-500 hover:text-white p-2 rounded-xl hover:bg-slate-800 transition cursor-pointer"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-300 hover:text-white bg-slate-800/60 hover:bg-slate-800 transition cursor-pointer"
               >
                 <ShieldCheck className="w-4 h-4" />
+                <span>Admin</span>
               </button>
             )}
           </div>
