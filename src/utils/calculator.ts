@@ -176,9 +176,16 @@ export function calculateEstimate(inputs: EstimateInputs, config: PricingConfig)
   // Based on the selected locationId zone
   const travelZone = locationZoneCfg;
 
-  // Flights (round trip per person travelling)
-  const numTravelers = travel.travellingMembers >= 0 ? travel.travellingMembers : execution.teamSize;
-  const flightCost = travelZone.flight * numTravelers;
+  const travelByAirCount = Math.max(0, travel.travelByAirCount);
+  const travelByCarCount = Math.max(0, travel.travelByCarCount);
+  const numTravelers = travelByAirCount + travelByCarCount;
+
+  // Flights (round trip per person flying -- car travellers don't get one)
+  const flightCost = travelZone.flight * travelByAirCount;
+
+  // Fuel for car travellers (round-trip km x rate), independent of headcount
+  // -- it's the vehicle doing the driving, not each passenger.
+  const carFuelCost = travelByCarCount > 0 ? Math.max(0, travel.carDistanceKm) * config.carFuelRatePerKm : 0;
 
   // Accommodation (rate * nights * travelers) - wait, if lodging is Airbnb, often it's per house,
   // but let's stick to the spec's: Accom Rate * Nights * Team Size or simply per night.
@@ -188,7 +195,7 @@ export function calculateEstimate(inputs: EstimateInputs, config: PricingConfig)
   // Daily allowance (daily rate * travel days * travelers)
   const dailyAllowanceCost = travelZone.allowance * travel.travelDays * numTravelers;
 
-  let totalTravelCost = flightCost + accommodationCost + dailyAllowanceCost + travel.equipmentTransportCost;
+  let totalTravelCost = flightCost + carFuelCost + accommodationCost + dailyAllowanceCost + travel.equipmentTransportCost;
 
   // If contractor execution type and there is a contractor labor override, add it
   if (travel.executionType === 'contractor' && travel.contractorLabourCostOverride !== undefined) {
@@ -259,6 +266,7 @@ export function calculateEstimate(inputs: EstimateInputs, config: PricingConfig)
     nfcTagsInstallCost,
     totalNfcTagsCost,
     flightCost,
+    carFuelCost,
     accommodationCost,
     dailyAllowanceCost,
     totalTravelCost,

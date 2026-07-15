@@ -40,7 +40,11 @@ export interface ExecutionData {
 
 export interface TravelData {
   executionType: 'internal' | 'contractor';
-  travellingMembers: number;
+  // Split by transport mode -- a team can travel by air, by car, or a mix of
+  // both at once, each with its own headcount.
+  travelByAirCount: number;
+  travelByCarCount: number;
+  carDistanceKm: number; // round-trip driving distance, used for fuel cost
   accommodationNights: number;
   travelDays: number;
   equipmentTransportCost: number;
@@ -98,6 +102,7 @@ export interface EstimateResults {
 
   // Travel costs
   flightCost: number;
+  carFuelCost: number;
   accommodationCost: number;
   dailyAllowanceCost: number;
   totalTravelCost: number;
@@ -179,4 +184,5 @@ export interface PricingConfig {
     tagPrice: number; // $ per tag (materials)
     installPricePerTag: number; // $ per tag (installation)
   };
+  carFuelRatePerKm: number; // $/km, charged instead of a flight for car travellers
 }

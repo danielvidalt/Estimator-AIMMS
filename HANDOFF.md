@@ -1,6 +1,6 @@
 # Handoff — Estimator AIMMS
 
-_Última actualización: 2026-07-14_
+_Última actualización: 2026-07-15_
 
 ## Estado general
 
@@ -12,9 +12,10 @@ _Última actualización: 2026-07-14_
   - `quotes` — historial de cotizaciones, ahora compartido con cualquier visitante (no solo 3 usuarios).
   - `app_state` — borrador actual + override de preliminares (fila única `singleton`, compartida por todos).
   - `pricing_config` — parámetros del motor de precios. Desde la migración `20260714000000_open_access_admin_config.sql`, el SELECT es abierto a cualquier autenticado (incl. anónimos, para que la calculadora funcione), pero el INSERT/UPDATE queda restringido por RLS a `auth.jwt()->>'email' = 'danielvidal.t@gmail.com'` — el admin es el único que puede guardar cambios, reforzado en la base de datos, no solo en la UI.
-- Archivos de migración en `supabase/migrations/` (por si hay que recrear el proyecto Supabase desde cero). **Las migraciones `20260714000000` y `20260714010000` todavía no se corrieron contra la base real** — hay que ejecutarlas en el SQL Editor de Supabase.
+- Archivos de migración en `supabase/migrations/` (por si hay que recrear el proyecto Supabase desde cero). Migraciones `20260714000000` y `20260714010000` confirmadas corridas en la base real (2026-07-15). **Falta correr `20260715000000_split_travel_by_mode.sql`** en el SQL Editor.
 - No hay sync en tiempo real (websockets) entre pestañas/usuarios simultáneos — cada quien ve los últimos datos guardados al cargar/refrescar, pero dos personas con la app abierta a la vez no ven los cambios del otro sin recargar. Si se necesita eso, falta agregar `supabase.channel(...).on('postgres_changes', ...)`.
 - **Modelo de precios (2026-07-14): Markup % y Gross Return % son independientes**, ya no hay un selector único de método. `EstimateInputs.markupPercent` / `grossReturnPercent` son `number | null` — cualquiera de los dos, ambos, o ninguno. `calculateEstimate()` (`src/utils/calculator.ts`) ya NO calcula profit/subtotal/GST/final price — eso se movió a `computeScenario(method, percent, totalCost, totalExecutionCost, totalFacadeArea)`, llamado una vez por cada % que esté seteado (`markupScenario`/`grossScenario` en `App.tsx`). El panel principal, el Historial y `PrintQuotePreview` muestran solo los escenarios que tengan un % cargado (nunca inventan un número para el que quedó vacío). `SavedQuote` solo guarda `markupPercent`/`grossReturnPercent` + `totalCost`/`totalFacadeArea`/`costPerM2` — Subtotal/Final Price se recalculan al vuelo desde esos datos, no se persisten. Columnas nuevas en Supabase: `markup_percent`, `gross_return_percent` (migración `20260714010000_dual_margin_columns.sql`, backfillea desde las columnas viejas `profit_margin_percent`/`margin_method`, que quedan sin usar pero no se borran).
+- **Viaje por avión o auto, mixto (2026-07-15):** `TravelData.travellingMembers` se separó en `travelByAirCount` + `travelByCarCount` + `carDistanceKm` (sección 04, UI). El equipo puede viajar parte en avión y parte en auto a la vez; el costo de auto es `carDistanceKm × config.carFuelRatePerKm` (default $0.25/km, editable en Settings → "Location / Travel Zones"), **no** se multiplica por la cantidad de personas (es el costo del viaje del vehículo, no por pasajero). El vuelo (`flightCost`) ahora solo se cobra por `travelByAirCount`. Como `travel` se guarda como jsonb (no columnas separadas), hay una normalización defensiva en `App.tsx` (`normalizeInputs()`) que trata cualquier borrador/cotización vieja con `travellingMembers` como si fuera 100% aéreo — esto es necesario porque el borrador compartido (`app_state`) ya tenía datos viejos en producción antes de este cambio. **Falta correr** `supabase/migrations/20260715000000_split_travel_by_mode.sql` para backfillear las cotizaciones ya guardadas en `quotes` (no destructivo, deja `travellingMembers` intacto sin usar).
 
 ## Funcionalidad construida esta sesión
 

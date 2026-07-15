@@ -293,7 +293,8 @@ export default function PrintQuotePreview({
                         Mobilisation & Field Team Travel
                       </td>
                       <td className="p-2.5 text-right text-slate-500">
-                        {inputs.travel.travellingMembers || inputs.execution.teamSize} Travelers / {inputs.travel.accommodationNights} Nights / {inputs.travel.travelDays} Travel Days
+                        {inputs.travel.travelByAirCount + inputs.travel.travelByCarCount || inputs.execution.teamSize} Travelers
+                        {inputs.travel.travelByCarCount > 0 ? ` (${inputs.travel.travelByAirCount} air / ${inputs.travel.travelByCarCount} car)` : ''} / {inputs.travel.accommodationNights} Nights / {inputs.travel.travelDays} Travel Days
                       </td>
                       <td className="p-2.5 text-right font-mono text-slate-900 font-medium pr-3">
                         ${results.totalTravelCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}

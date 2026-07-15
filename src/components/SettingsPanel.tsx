@@ -310,6 +310,9 @@ export default function SettingsPanel({ config, onSave, readOnly = false }: Sett
             </div>
           </div>
         ))}
+        <ParamRow label="Car Fuel Rate" sublabel="$/km, round trip, charged instead of a flight for car travellers">
+          <NumField prefix="$" value={buffer.carFuelRatePerKm} onChange={(v) => setBuffer(prev => ({ ...prev, carFuelRatePerKm: v }))} />
+        </ParamRow>
       </Section>
 
       <Section title="Execution / Labor Rates" index="08">

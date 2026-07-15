@@ -51,6 +51,22 @@ import {
   PRELIM_DETAILS_B
 } from './constants';
 import { EstimateInputs, SavedQuote, Segment, PricingConfig } from './types';
+
+// Drafts/quotes saved before travel headcount split by transport mode only
+// have the old `travellingMembers` key -- treat that as travelByAirCount so
+// existing data doesn't silently turn into NaN costs.
+function normalizeInputs(raw: any): EstimateInputs {
+  const travel = raw?.travel ?? {};
+  return {
+    ...raw,
+    travel: {
+      ...travel,
+      travelByAirCount: travel.travelByAirCount ?? travel.travellingMembers ?? 0,
+      travelByCarCount: travel.travelByCarCount ?? 0,
+      carDistanceKm: travel.carDistanceKm ?? 0,
+    },
+  };
+}
 import { calculateEstimate, getPreliminariesCost, getPreliminariesBreakdown, computeScenario, PricingScenario } from './utils/calculator';
 import PreliminariesModal from './components/PreliminariesModal';
 import PrintQuotePreview from './components/PrintQuotePreview';
@@ -74,7 +90,7 @@ export default function App({ session }: AppProps) {
     // Attempt load latest working draft or default
     try {
       const cachedDraft = localStorage.getItem('aimms_current_draft');
-      return cachedDraft ? JSON.parse(cachedDraft) : DEFAULT_INPUTS;
+      return cachedDraft ? normalizeInputs(JSON.parse(cachedDraft)) : DEFAULT_INPUTS;
     } catch {
       return DEFAULT_INPUTS;
     }
@@ -170,7 +186,7 @@ export default function App({ session }: AppProps) {
         const { draft, customPrelims: remotePrelims } = await fetchAppState();
         if (cancelled) return;
         if (draft) {
-          setInputs(draft);
+          setInputs(normalizeInputs(draft));
         }
         if (remotePrelims !== null && remotePrelims !== undefined) {
           setCustomPrelims(remotePrelims);
@@ -378,13 +394,13 @@ export default function App({ session }: AppProps) {
 
   const updateExecution = (field: string, value: any) => {
     setInputs(prev => {
-      // If teamSize changes, also keep travel travellingMembers in sync unless manually modified
+      // If teamSize changes, also keep travel-by-air headcount in sync (default assumption: everyone flies)
       if (field === 'teamSize') {
         const nextVal = parseInt(value) || 1;
         return {
           ...prev,
           execution: { ...prev.execution, [field]: nextVal },
-          travel: { ...prev.travel, travellingMembers: nextVal }
+          travel: { ...prev.travel, travelByAirCount: nextVal }
         };
       }
       return {
@@ -482,7 +498,7 @@ export default function App({ session }: AppProps) {
   };
 
   const handleLoadQuote = (quote: SavedQuote) => {
-    setInputs({
+    setInputs(normalizeInputs({
       projectInfo: quote.projectInfo,
       geometry: quote.geometry,
       complexity: quote.complexity,
@@ -491,7 +507,7 @@ export default function App({ session }: AppProps) {
       meeting: quote.meeting,
       markupPercent: quote.markupPercent,
       grossReturnPercent: quote.grossReturnPercent,
-    });
+    }));
     setEditingId(quote.id);
     setActiveTab('calculator');
     // Scroll smoothly to top
@@ -1310,7 +1326,7 @@ export default function App({ session }: AppProps) {
                       )}
                     </h2>
                     <span className="text-xs text-slate-500 font-bold block mt-0.5">
-                      Flights ${activeZoneObj.flight} &bull; Accom ${activeZoneObj.accom}
+                      Flights ${activeZoneObj.flight} &bull; Accom ${activeZoneObj.accom} &bull; Fuel ${config.carFuelRatePerKm}/km
                     </span>
                   </div>
                 </div>
@@ -1349,18 +1365,47 @@ export default function App({ session }: AppProps) {
                       </div>
                     </div>
 
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
-                        Travelling field staff count
-                      </label>
-                      <input
-                        type="number"
-                        min="0"
-                        value={inputs.travel.travellingMembers}
-                        onChange={(e) => updateTravel('travellingMembers', Math.max(0, parseInt(e.target.value) || 0))}
-                        className="w-full px-3 py-2 border border-slate-200 rounded-lg text-slate-800 text-sm md:text-base font-bold font-mono focus:outline-none focus:ring-2 focus:ring-aimms-blue/20 text-center"
-                      />
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
+                          Travelling by Air
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={inputs.travel.travelByAirCount}
+                          onChange={(e) => updateTravel('travelByAirCount', Math.max(0, parseInt(e.target.value) || 0))}
+                          className="w-full px-3 py-2 border border-slate-200 rounded-lg text-slate-800 text-sm md:text-base font-bold font-mono focus:outline-none focus:ring-2 focus:ring-aimms-blue/20 text-center"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
+                          Travelling by Car
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={inputs.travel.travelByCarCount}
+                          onChange={(e) => updateTravel('travelByCarCount', Math.max(0, parseInt(e.target.value) || 0))}
+                          className="w-full px-3 py-2 border border-slate-200 rounded-lg text-slate-800 text-sm md:text-base font-bold font-mono focus:outline-none focus:ring-2 focus:ring-aimms-blue/20 text-center"
+                        />
+                      </div>
                     </div>
+
+                    {inputs.travel.travelByCarCount > 0 && (
+                      <div className="space-y-1.5 animate-fade-in">
+                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
+                          Car Distance (round trip, km)
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={inputs.travel.carDistanceKm}
+                          onChange={(e) => updateTravel('carDistanceKm', Math.max(0, parseFloat(e.target.value) || 0))}
+                          className="w-full px-3 py-2 border border-slate-200 rounded-lg text-slate-800 text-sm md:text-base font-bold font-mono focus:outline-none focus:ring-2 focus:ring-aimms-blue/20 text-center"
+                        />
+                      </div>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-3 gap-2">

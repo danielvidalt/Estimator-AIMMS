@@ -132,7 +132,9 @@ export const DEFAULT_INPUTS: EstimateInputs = {
   },
   travel: {
     executionType: "internal",
-    travellingMembers: 2,
+    travelByAirCount: 2,
+    travelByCarCount: 0,
+    carDistanceKm: 0,
     accommodationNights: 4,
     travelDays: 6,
     equipmentTransportCost: 0,
@@ -184,7 +186,9 @@ export const INITIAL_HISTORY = [
     },
     travel: {
       executionType: "internal" as const,
-      travellingMembers: 0,
+      travelByAirCount: 0,
+      travelByCarCount: 0,
+      carDistanceKm: 0,
       accommodationNights: 0,
       travelDays: 0,
       equipmentTransportCost: 0,
@@ -241,7 +245,9 @@ export const INITIAL_HISTORY = [
     },
     travel: {
       executionType: "internal" as const,
-      travellingMembers: 3,
+      travelByAirCount: 3,
+      travelByCarCount: 0,
+      carDistanceKm: 0,
       accommodationNights: 10,
       travelDays: 11,
       equipmentTransportCost: 450,
@@ -290,4 +296,5 @@ export const DEFAULT_PRICING_CONFIG: PricingConfig = {
     tagPrice: 1.30,
     installPricePerTag: 0.40,
   },
+  carFuelRatePerKm: 0.25,
 };
